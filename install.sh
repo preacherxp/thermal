@@ -1,5 +1,4 @@
 #!/bin/sh
-# Install the matching GitHub release without a language runtime or root access.
 set -eu
 
 fail() { printf 'thermal installer: %s\n' "$*" >&2; exit 1; }

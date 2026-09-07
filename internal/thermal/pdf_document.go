@@ -12,8 +12,6 @@ import (
 	"unicode/utf16"
 )
 
-// A compact PDF 1.4 writer with an embedded TrueType font, selectable Unicode
-// text and vector charts. No external renderer is needed at runtime.
 // PDF reference: https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.7old.pdf
 //
 //go:embed assets/Go-Regular.ttf

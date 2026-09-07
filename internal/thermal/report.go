@@ -24,6 +24,13 @@ func average(v []float64) *float64 {
 	}
 	return Number(n / float64(len(v)))
 }
+func sustainedCutoff(r Run) float64 {
+	if len(r.Samples) == 0 {
+		return 0
+	}
+	first, last := r.Samples[0].Seconds, r.Samples[len(r.Samples)-1].Seconds
+	return first + (last-first)*0.75
+}
 func Summarize(r Run, sustained bool) map[string]Stats {
 	type values struct {
 		stat                     Stats
@@ -32,7 +39,7 @@ func Summarize(r Run, sustained bool) map[string]Stats {
 	all := map[string]*values{}
 	cutoff := 0.0
 	if sustained && len(r.Samples) > 0 {
-		cutoff = r.Samples[len(r.Samples)-1].Seconds * 0.75
+		cutoff = sustainedCutoff(r)
 	}
 	for _, s := range r.Samples {
 		if s.Seconds < cutoff {
@@ -298,7 +305,7 @@ func Compare(a, b Run) Comparison {
 		if len(run.Samples) == 0 {
 			continue
 		}
-		cutoff := run.Samples[len(run.Samples)-1].Seconds * 0.75
+		cutoff := sustainedCutoff(run)
 		ranges := map[string][]float64{}
 		for _, sample := range run.Samples {
 			if sample.Seconds < cutoff {
@@ -377,3 +384,34 @@ func Compare(a, b Run) Comparison {
 	return c
 }
 func StageHelp() string { return strings.Join(Stages, ", ") }
+
+// TargetStats selects a deterministic sustained sensor for the requested kind.
+func TargetStats(r Run, kind string) (string, Stats) {
+	stats := Summarize(r, true)
+	if kind == "" && r.Workload == "cpu-sha256-v1" {
+		kind = "cpu"
+	} else if kind == "" && r.Workload == "gpu-integer-v1" {
+		kind = "gpu"
+	}
+	targetID := ""
+	if kind == "gpu" && r.Workload == "gpu-integer-v1" && len(r.Samples) > 0 {
+		targetID = r.Samples[0].TargetID
+	}
+	id := ""
+	for _, k := range keys(stats) {
+		s := stats[k]
+		if kind != "" && s.Kind != kind {
+			continue
+		}
+		if targetID != "" && k != targetID || targetID == "" && kind == "gpu" && r.GPU != nil && !strings.EqualFold(strings.TrimSpace(s.Name), strings.TrimSpace(r.GPU.Device)) {
+			continue
+		}
+		if id == "" || stats[id].Mean == nil && s.Mean != nil || s.Mean != nil && stats[id].Mean != nil && *s.Mean > *stats[id].Mean {
+			id = k
+		}
+	}
+	if id == "" {
+		return "", Stats{Name: strings.ToUpper(kind), Kind: kind}
+	}
+	return id, stats[id]
+}

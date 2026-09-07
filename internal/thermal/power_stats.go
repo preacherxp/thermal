@@ -24,7 +24,7 @@ func SummarizePower(r Run, sustained bool) map[string]map[string]PowerStats {
 	values := map[string]map[string][]float64{}
 	cutoff := 0.0
 	if sustained && len(r.Samples) > 0 {
-		cutoff = r.Samples[len(r.Samples)-1].Seconds * 0.75
+		cutoff = sustainedCutoff(r)
 	}
 	for _, sample := range r.Samples {
 		if sample.Seconds < cutoff {

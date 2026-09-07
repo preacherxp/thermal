@@ -219,3 +219,21 @@ func TestThroughputAndVariableLoad(t *testing.T) {
 		t.Fatal("transient load drop not flagged")
 	}
 }
+
+func TestSustainedWindowWithOffsetTimestamps(t *testing.T) {
+	r := fixture("baseline", 60, 20, 1000)
+	r.Samples = nil
+	for i := 0; i < 5; i++ {
+		r.Samples = append(r.Samples, Sample{Seconds: 100 + float64(i)*5, Devices: []Device{{ID: "gpu", Kind: "gpu", Temp: Number(float64(i) * 20), Power: Number(float64(i) * 20), Util: Number(float64(i) * 10)}}})
+	}
+	temp := Summarize(r, true)["gpu"].Mean
+	power := SummarizePower(r, true)["gpu"]["primary"].Mean
+	if temp == nil || power == nil || *temp != 70 || *power != 70 {
+		t.Fatalf("incorrect sustained means: temp=%v power=%v", temp, power)
+	}
+	for _, warning := range Compare(r, r).Warnings {
+		if strings.Contains(warning, "varies by over 20") {
+			t.Fatal("comparison included utilization outside the sustained window")
+		}
+	}
+}

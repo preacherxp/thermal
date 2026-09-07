@@ -3,26 +3,24 @@ package thermal
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 )
 
-// compactRate keeps large compute counters readable without changing their units.
-func compactRate(v float64) string {
+func CompactRate(v float64) string {
 	for _, scale := range []struct {
 		n      float64
 		suffix string
 	}{
 		{1e12, "T"}, {1e9, "G"}, {1e6, "M"}, {1e3, "k"},
 	} {
-		if v >= scale.n {
+		if math.Abs(v) >= scale.n {
 			return fmt.Sprintf("%.2f %s", v/scale.n, scale.suffix)
 		}
 	}
 	return fmt.Sprintf("%.1f", v)
 }
 
-// BenchmarkSummary shows target-specific results. Full sensor tables, context,
-// and all warnings remain available through Report and the saved reports.
 func BenchmarkSummary(w io.Writer, r Run) {
 	d := newDisplay(w)
 	d.header("BENCHMARK / "+strings.ToUpper(r.Status), r.Created.UTC().Format("2006-01-02 15:04 UTC")+" / "+r.Stage)
@@ -42,9 +40,9 @@ func BenchmarkSummary(w io.Writer, r Run) {
 		}
 		score := ""
 		if phase.Workload == "cpu-sha256-v1" && phase.Operations > 0 && phase.Elapsed > 0 {
-			score = compactRate(float64(phase.Operations)/phase.Elapsed) + " hashes/s"
+			score = CompactRate(float64(phase.Operations)/phase.Elapsed) + " hashes/s"
 		} else if phase.GPU != nil && phase.GPU.Rate() != nil {
-			score = compactRate(*phase.GPU.Rate()) + " verified iterations/s"
+			score = CompactRate(*phase.GPU.Rate()) + " verified iterations/s"
 		}
 		if score != "" {
 			d.line(fmt.Sprintf("Score         %s / %.1f s", score, phase.Elapsed))
@@ -68,7 +66,7 @@ func BenchmarkSummary(w io.Writer, r Run) {
 			}
 			d.line("Partial score; requested test duration was not completed.")
 		}
-		id, sustained := primaryTargetStats(phase)
+		id, sustained := TargetStats(phase, "")
 		all := Summarize(phase, false)[id]
 		d.line("Temperature   " + value(all.Mean, " C") + " mean / " + value(all.Peak, " C") + " peak")
 		d.line("Sustained     " + value(sustained.Mean, " C") + " / " + value(sustained.Power, " W") + " / " + value(sustained.Clock, " MHz"))
@@ -104,5 +102,5 @@ func gpuRateText(g *GPUResult) string {
 	if g.Rate() == nil {
 		return "unknown verified iterations/s"
 	}
-	return compactRate(*g.Rate()) + " verified iterations/s"
+	return CompactRate(*g.Rate()) + " verified iterations/s"
 }

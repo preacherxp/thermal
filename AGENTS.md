@@ -102,7 +102,7 @@ See [RUN.md](RUN.md) for quick examples and [README.md](README.md) for full opti
 
 ## Development
 
-Go 1.23+; pinned external Go TUI libraries are permitted, no cgo. Commands: `cmd/thermal`; measurement/report implementation: `internal/thermal`; dashboard: `internal/tui`; distribution tooling: `scripts/dist`. Preserve unknown readings, non-overwriting saves, and clean JSON stdout.
+Go 1.26.8+; pinned external Go TUI libraries are permitted, no cgo. Commands: `cmd/thermal`; measurement/report implementation: `internal/thermal`; dashboard: `internal/tui`; distribution tooling: `scripts/dist`. Preserve unknown readings, non-overwriting saves, and clean JSON stdout.
 
 Download modules with `go mod download`. Dependency versions are pinned in `go.mod`/`go.sum`; update `THIRD_PARTY_LICENSES.txt` from upstream module licenses when dependencies change. Release archives bundle these notices; `check-deps` verifies checksums, license coverage, and all six platforms.
 

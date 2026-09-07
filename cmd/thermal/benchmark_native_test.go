@@ -87,7 +87,7 @@ func TestNativeDefaultBenchmark(t *testing.T) {
 	if (r.Status == "complete") != (cmd.ProcessState.ExitCode() == 0) {
 		t.Fatal("exit status disagrees with report")
 	}
-	pdf := defaultPDFPath(files[0])
+	pdf := defaultExportPath(files[0], "pdf")
 	assertPDF(t, pdf)
 	if !strings.Contains(string(output), pdf) {
 		t.Fatal("PDF path not printed")

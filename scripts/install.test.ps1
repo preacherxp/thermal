@@ -37,7 +37,6 @@ try {
         $checksums += "$hash  $name"
     }
     $checksums | Set-Content -LiteralPath (Join-Path $fixture 'checksums.txt') -Encoding ASCII
-    # Simulate a host without the cmdlet after generating the fixture checksums.
     function Get-FileHash { throw 'Get-FileHash is unavailable in this host.' }
     foreach ($arch in @('AMD64', 'ARM64')) {
         $env:PROCESSOR_ARCHITECTURE = $arch

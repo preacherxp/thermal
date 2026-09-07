@@ -18,6 +18,21 @@ func TestPackageRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	templates := map[string]string{}
+	for _, name := range []string{"install.sh", "install.ps1"} {
+		data, err := os.ReadFile(filepath.Join(root, "..", "..", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := "version=${THERMAL_VERSION:-@VERSION@}"
+		if name == "install.ps1" {
+			expected = "else { '@VERSION@' }"
+		}
+		if !strings.Contains(string(data), expected) {
+			t.Fatalf("%s default version is not templated", name)
+		}
+		templates[name] = string(data)
+	}
 	tmp := t.TempDir()
 	if err := os.Chdir(tmp); err != nil {
 		t.Fatal(err)
@@ -29,7 +44,11 @@ func TestPackageRelease(t *testing.T) {
 		if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(name, []byte("preacherxp/thermal @VERSION@"), 0644); err != nil {
+		data := "preacherxp/thermal @VERSION@"
+		if template, ok := templates[name]; ok {
+			data = template
+		}
+		if err := os.WriteFile(name, []byte(data), 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -127,7 +146,7 @@ func TestPackageRelease(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(data) != "test-owner/thermal-fork v0.6.0" {
+		if string(data) != strings.ReplaceAll(strings.ReplaceAll(templates[name], "preacherxp/thermal", "test-owner/thermal-fork"), "@VERSION@", "v0.6.0") {
 			t.Fatalf("installer not pinned: %s", data)
 		}
 	}

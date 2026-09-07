@@ -68,6 +68,8 @@ Interactive terminals open a modern live dashboard built with Bubble Tea, Lip Gl
 
 Use `--no-tui` for minimal output, or `--verbose` / `thermal report run.json` for full tables. Pipes, `--json`, unsupported terminals, `NO_COLOR`, and `TERM=dumb` automatically use the minimal fallback.
 
+PNG reports show up to six sensor charts per phase, prioritizing the CPU/GPU targets. An omission note identifies larger sensor sets; the saved JSON and `thermal report run.json` retain every reading. PDF findings assess CPU and GPU sensors separately for passive recordings.
+
 [See a sample PNG](examples/comparison.png) · [More examples](RUN.md) · [Automation guide](AGENTS.md)
 
 Use `--out run.json` to choose an output path, `--json` for JSON stdout, `--pdf report.pdf` for a custom PDF path, or `--no-pdf` / `--no-png` to skip either export. Existing reports are never overwritten. Ctrl+C saves partial results.
@@ -84,7 +86,7 @@ Use `--out run.json` to choose an output path, `--json` for JSON stdout, `--pdf 
 
 ## Development
 
-Go 1.23+, with pinned Go TUI dependencies and no cgo. From the repository root:
+Go 1.26.8+, with pinned Go TUI dependencies and no cgo. From the repository root:
 
 ```sh
 go mod download

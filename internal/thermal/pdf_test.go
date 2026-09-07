@@ -159,3 +159,26 @@ func TestPDFPreservesFilesAndWriterErrors(t *testing.T) {
 		t.Fatalf("writer error lost: %v", err)
 	}
 }
+
+func TestPDFRecordingAssessesEachTarget(t *testing.T) {
+	r := fixture("baseline", 60, 20, 1000)
+	for i := range r.Samples {
+		r.Samples[i].Devices = []Device{{ID: "cpu", Kind: "cpu", Name: "CPU", Temp: Number(84)}, {ID: "gpu", Kind: "gpu", Name: "GPU", Temp: Number(81)}}
+	}
+	var out bytes.Buffer
+	if err := WriteReportPDF(&out, r, nil); err != nil {
+		t.Fatal(err)
+	}
+	text := pdfTextForTest(t, out.Bytes())
+	if !strings.Contains(text, "GPU: Elevated thermal readings") || !strings.Contains(text, "CPU: No elevated sustained temperature observed") {
+		t.Fatalf("missing target-specific findings: %s", text)
+	}
+	r.Samples = []Sample{{}}
+	findings := pdfFindings(r)
+	if len(findings) != 1 || !strings.Contains(findings[0].title, "temperature unknown") {
+		t.Fatalf("missing readings hidden: %+v", findings)
+	}
+	if got := pdfNumber(Number(1e9), "", true); got != "1.00 G" {
+		t.Fatalf("inconsistent SI prefix: %s", got)
+	}
+}

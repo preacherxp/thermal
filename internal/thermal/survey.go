@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -87,7 +88,7 @@ func BuildSurvey(h HardwareInfo, profile string) Survey {
 	}
 	return s
 }
-func validMaterial(value string) bool { return contains(Materials, value) }
+func validMaterial(value string) bool { return slices.Contains(Materials, value) }
 func resolveMaterial(value string, info MaterialInfo) (MaterialInfo, error) {
 	value = strings.ToLower(strings.TrimSpace(value))
 	if value == "factory" {

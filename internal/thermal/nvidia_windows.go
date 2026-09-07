@@ -2,7 +2,6 @@ package thermal
 
 // Read-only NVIDIA NVML driver calls. ABI reference:
 // https://github.com/NVIDIA/go-nvml/blob/main/pkg/nvml/nvml.h
-// No SDK, cgo, copied wrapper library, or helper executable is required.
 import (
 	"fmt"
 	"math"

@@ -11,8 +11,8 @@ import (
 	"image/png"
 	"io"
 	"math"
-	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -299,7 +299,33 @@ func (p *pngReport) device(id string, a Run, b *Run, before, after Stats) {
 	}})
 }
 
-// WriteReportPNG writes a readable report. Supplying after creates a comparison.
+// ponytail: six charts per phase keep suites readable; use JSON or thermal
+// report for every sensor, and add paginated images if full charts are needed.
+func (p *pngReport) devices(a Run, b *Run, devices []DeviceDelta) {
+	selected := a
+	if b != nil {
+		selected = *b
+	}
+	cpu, _ := TargetStats(selected, "cpu")
+	gpu, _ := TargetStats(selected, "gpu")
+	slices.SortStableFunc(devices, func(a, b DeviceDelta) int {
+		priority := func(id string) int {
+			if id == cpu || id == gpu {
+				return 0
+			}
+			return 1
+		}
+		return priority(a.ID) - priority(b.ID)
+	})
+	const limit = 6
+	for _, d := range devices[:min(len(devices), limit)] {
+		p.device(d.ID, a, b, d.Before, d.After)
+	}
+	if len(devices) > limit {
+		p.paragraph("CHART OVERVIEW", []string{fmt.Sprintf("Showing %d of %d sensors; %d additional sensor charts omitted. All readings remain in the saved JSON and thermal report <run.json>.", limit, len(devices), len(devices)-limit)}, orange)
+	}
+}
+
 func (p *pngReport) addReport(before Run, after *Run) {
 	if len(before.Phases) > 0 {
 		p.header("CPU + GPU benchmark", before, after)
@@ -369,11 +395,13 @@ func (p *pngReport) addReport(before Run, after *Run) {
 	sa := Summarize(before, true)
 	if after == nil {
 		all := Summarize(before, false)
+		var devices []DeviceDelta
 		for _, id := range keys(all) {
 			s := sa[id]
 			s.Name = all[id].Name
-			p.device(id, before, nil, s, Stats{})
+			devices = append(devices, DeviceDelta{ID: id, Before: s})
 		}
+		p.devices(before, nil, devices)
 		if len(all) == 0 {
 			p.paragraph("NO SENSOR DATA", []string{"No device readings were recorded. Run thermal doctor to check sensor access."}, orange)
 		}
@@ -382,9 +410,7 @@ func (p *pngReport) addReport(before Run, after *Run) {
 		if c.GPUThroughputDelta != nil {
 			p.paragraph("GPU WORK COMPLETED", []string{pngValue(before.GPU.Rate(), " iterations/s") + " → " + pngValue(after.GPU.Rate(), " iterations/s") + " (" + pngDelta(c.GPUThroughputDelta, " iterations/s") + ")"}, teal)
 		}
-		for _, d := range c.Devices {
-			p.device(d.ID, before, after, d.Before, d.After)
-		}
+		p.devices(before, after, c.Devices)
 		if c.ThroughputDelta != nil {
 			p.paragraph("CPU WORK COMPLETED", []string{pngValue(c.BeforeThroughput, " hashes/s") + " → " + pngValue(c.AfterThroughput, " hashes/s") + "  (" + pngDelta(c.ThroughputDelta, " hashes/s") + ")"}, teal)
 		}
@@ -434,7 +460,6 @@ func WriteReportPNG(w io.Writer, before Run, after *Run) error {
 	return png.Encode(w, im)
 }
 
-// SaveReportPNG uses exclusive creation, just like saved measurements.
 func SaveReportPNG(path string, before Run, after *Run) error {
 	if !strings.EqualFold(filepath.Ext(path), ".png") {
 		return fmt.Errorf("PNG output must end in .png")
@@ -443,22 +468,5 @@ func SaveReportPNG(path string, before Run, after *Run) error {
 	if err := WriteReportPNG(&data, before, after); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(data.Bytes())
-	closeErr := f.Close()
-	if err != nil {
-		_ = os.Remove(path)
-		return err
-	}
-	if closeErr != nil {
-		_ = os.Remove(path)
-		return closeErr
-	}
-	return nil
+	return saveExclusive(path, data.Bytes())
 }

@@ -1,8 +1,7 @@
-# Download this release asset with curl.exe, then run it with PowerShell.
 [CmdletBinding()]
 param(
     [string]$Repository = $(if ($env:THERMAL_REPOSITORY) { $env:THERMAL_REPOSITORY } else { 'preacherxp/thermal' }),
-    [string]$Version = $(if ($env:THERMAL_VERSION) { $env:THERMAL_VERSION } else { 'v0.6.0' }),
+    [string]$Version = $(if ($env:THERMAL_VERSION) { $env:THERMAL_VERSION } else { '@VERSION@' }),
     [string]$InstallDir = $(if ($env:THERMAL_INSTALL_DIR) { $env:THERMAL_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Thermal\bin' })
 )
 $ErrorActionPreference = 'Stop'

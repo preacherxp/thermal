@@ -79,11 +79,11 @@ func TestImportAutomaticPNG(t *testing.T) {
 			t.Fatal(stderr.String())
 		}
 		if skip {
-			if _, err := os.Stat(defaultPNGPath(path)); !os.IsNotExist(err) {
+			if _, err := os.Stat(defaultExportPath(path, "png")); !os.IsNotExist(err) {
 				t.Fatal("--no-png ignored")
 			}
 		} else {
-			assertPNG(t, defaultPNGPath(path))
+			assertPNG(t, defaultExportPath(path, "png"))
 		}
 	}
 }

@@ -40,12 +40,12 @@ func TestAutomaticPDFImport(t *testing.T) {
 			t.Fatal(stderr.String())
 		}
 		if skip {
-			if _, err := os.Stat(defaultPDFPath(path)); !os.IsNotExist(err) {
+			if _, err := os.Stat(defaultExportPath(path, "pdf")); !os.IsNotExist(err) {
 				t.Fatal("--no-pdf was ignored")
 			}
 		} else {
-			assertPDF(t, defaultPDFPath(path))
-			if !strings.Contains(stderr.String(), defaultPDFPath(path)) {
+			assertPDF(t, defaultExportPath(path, "pdf"))
+			if !strings.Contains(stderr.String(), defaultExportPath(path, "pdf")) {
 				t.Fatal("PDF path not announced")
 			}
 		}
@@ -109,14 +109,13 @@ func TestPDFExportFailureKeepsSavedJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, "saved.json")
-	// A render/save failure after JSON exists must leave the JSON and other exports intact.
 	data := demoRunForPDFTest()
 	if _, err := thermal.Save(data, path); err != nil {
 		t.Fatal(err)
 	}
 	pdfPath := filepath.Join(blocker, "report.pdf")
 	disabled := false
-	flags := pdfFlags{path: &pdfPath, disabled: &disabled}
+	flags := exportFlags{format: "pdf", path: &pdfPath, disabled: &disabled}
 	var stderr bytes.Buffer
 	if err := flags.save(path, data, &stderr); err == nil || !strings.Contains(err.Error(), "JSON saved") {
 		t.Fatalf("missing saved-data recovery error: %v", err)

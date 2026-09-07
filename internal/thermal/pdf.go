@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -56,48 +55,15 @@ func pdfNumber(n *float64, unit string, compact bool) string {
 	}
 	v := *n
 	if compact {
-		for _, s := range []struct {
-			n     float64
-			label string
-		}{{1e12, "T"}, {1e9, "B"}, {1e6, "M"}, {1e3, "k"}} {
-			if math.Abs(v) >= s.n {
-				return fmt.Sprintf("%.2f%s%s", v/s.n, s.label, unit)
-			}
-		}
+		return CompactRate(v) + unit
 	}
 	return fmt.Sprintf("%.1f%s", v, unit)
-}
-func primaryTargetStats(r Run) (string, Stats) {
-	stats := Summarize(r, true)
-	kind := ""
-	if r.Workload == "cpu-sha256-v1" {
-		kind = "cpu"
-	} else if r.Workload == "gpu-integer-v1" {
-		kind = "gpu"
-	}
-	id := ""
-	for _, k := range keys(stats) {
-		s := stats[k]
-		if kind != "" && s.Kind != kind {
-			continue
-		}
-		if kind == "gpu" && r.GPU != nil && !strings.EqualFold(strings.TrimSpace(s.Name), strings.TrimSpace(r.GPU.Device)) {
-			continue
-		}
-		if id == "" || stats[id].Mean == nil && s.Mean != nil || s.Mean != nil && stats[id].Mean != nil && *s.Mean > *stats[id].Mean {
-			id = k
-		}
-	}
-	if id == "" {
-		return "", Stats{Name: strings.ToUpper(kind), Kind: kind}
-	}
-	return id, stats[id]
 }
 func pdfFindings(r Run) []pdfFinding {
 	var findings []pdfFinding
 	for _, phase := range pdfRuns(r) {
 		name := pdfPhaseName(phase)
-		id, s := primaryTargetStats(phase)
+		id, s := TargetStats(phase, "")
 		if phase.Status != "complete" {
 			body := "Status: " + phase.Status + ". "
 			switch phase.Status {
@@ -112,35 +78,56 @@ func pdfFindings(r Run) []pdfFinding {
 			}
 			findings = append(findings, pdfFinding{name + " incomplete", body, true})
 		}
-		if s.Mean == nil {
-			if phase.Status != "complete" {
+		stats := map[string]Stats{id: s}
+		recording := phase.Workload != "cpu-sha256-v1" && phase.Workload != "gpu-integer-v1"
+		if recording {
+			stats = Summarize(phase, true)
+			for id, s := range stats {
+				if s.Kind != "cpu" && s.Kind != "gpu" {
+					delete(stats, id)
+				}
+			}
+			if len(stats) == 0 {
+				stats[""] = Stats{}
+			}
+		}
+		full := Summarize(phase, false)
+		for _, id := range keys(stats) {
+			s := stats[id]
+			name := name
+			if recording && s.Name != "" {
+				name += " / " + s.Name
+			}
+			if s.Mean == nil {
+				if phase.Status != "complete" {
+					continue
+				}
+				findings = append(findings, pdfFinding{name + ": temperature unknown", "No usable target temperature was measured. A throughput score alone cannot establish thermal condition.", true})
 				continue
 			}
-			findings = append(findings, pdfFinding{name + ": temperature unknown", "No usable target temperature was measured. A throughput score alone cannot establish thermal condition.", true})
-			continue
+			peak := full[id].Peak
+			detail := fmt.Sprintf("%s sustained; %s peak.", pdfNumber(s.Mean, " °C", false), pdfNumber(peak, " °C", false))
+			threshold := 85.0
+			if s.Kind == "gpu" {
+				threshold = 80
+			}
+			title := "No elevated sustained temperature observed"
+			caution := *s.Mean >= threshold || s.ThrottleSamples > 0
+			if caution {
+				title = "Elevated thermal readings"
+			}
+			if s.KnownThrottleSamples > 0 {
+				detail += fmt.Sprintf(" Thermal throttling: %d of %d known samples.", s.ThrottleSamples, s.KnownThrottleSamples)
+			} else {
+				detail += " Throttling status is unknown."
+			}
+			if s.Count < 3 {
+				title = "Limited thermal evidence"
+				detail += " Fewer than three temperature samples cover the sustained window."
+				caution = true
+			}
+			findings = append(findings, pdfFinding{name + ": " + title, detail, caution})
 		}
-		peak := Summarize(phase, false)[id].Peak
-		detail := fmt.Sprintf("%s sustained; %s peak.", pdfNumber(s.Mean, " °C", false), pdfNumber(peak, " °C", false))
-		threshold := 85.0
-		if s.Kind == "gpu" {
-			threshold = 80
-		}
-		title := "No elevated sustained temperature observed"
-		caution := *s.Mean >= threshold || s.ThrottleSamples > 0
-		if caution {
-			title = "Elevated thermal readings"
-		}
-		if s.KnownThrottleSamples > 0 {
-			detail += fmt.Sprintf(" Thermal throttling: %d of %d known samples.", s.ThrottleSamples, s.KnownThrottleSamples)
-		} else {
-			detail += " Throttling status is unknown."
-		}
-		if s.Count < 3 {
-			title = "Limited thermal evidence"
-			detail += " Fewer than three temperature samples cover the sustained window."
-			caution = true
-		}
-		findings = append(findings, pdfFinding{name + ": " + title, detail, caution})
 	}
 	return findings
 }
@@ -383,7 +370,7 @@ func (p *pdfReport) details(r Run) {
 	score, unit := pdfScore(r)
 	p.row("Throughput", score+" "+unit)
 	p.row("Captured / requested", fmt.Sprintf("%.1f s / %.1f s", r.Elapsed, r.Duration))
-	id, s := primaryTargetStats(r)
+	id, s := TargetStats(r, "")
 	measured := r.Operations > 0 || r.GPU != nil && r.GPU.Rate() != nil || r.Workload != "cpu-sha256-v1" && r.Workload != "gpu-integer-v1"
 	if measured {
 		peak := Summarize(r, false)[id].Peak
@@ -513,7 +500,6 @@ func (p *pdfReport) comparePhase(a, b Run) {
 	}
 }
 
-// WriteReportPDF writes a vector PDF with an evidence-based summary and detail pages.
 func WriteReportPDF(w io.Writer, before Run, after *Run) error {
 	font, err := newPDFFont()
 	if err != nil {
@@ -541,21 +527,5 @@ func SaveReportPDF(path string, before Run, after *Run) error {
 	if err := WriteReportPDF(&b, before, after); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(f, &b)
-	closeErr := f.Close()
-	if err != nil || closeErr != nil {
-		_ = os.Remove(path)
-		if err != nil {
-			return err
-		}
-		return closeErr
-	}
-	return nil
+	return saveExclusive(path, b.Bytes())
 }

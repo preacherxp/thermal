@@ -12,11 +12,8 @@ import (
 	"thermal-cli/internal/tui"
 )
 
-func captureDashboard(ctx context.Context, mode, target string, o thermal.Options, output string, pdf pdfFlags, png pngFlags, out, errOut io.Writer) (bool, error) {
-	if !tui.Available(os.Stdin, out, errOut) {
-		return false, nil
-	}
-	result, started, uiErr := tui.Run(ctx, os.Stdin, out.(*os.File), tui.Config{Mode: mode, Target: target, Duration: o.Duration.Seconds(), StopTemp: o.StopTemp}, func(ctx context.Context, progress func(string, thermal.Sample)) tui.Result {
+func captureWork(mode, target string, o thermal.Options, output string, pdf, png exportFlags) tui.Work {
+	return func(ctx context.Context, progress func(string, thermal.Sample)) tui.Result {
 		var r thermal.Run
 		var err error
 		if mode == "benchmark" {
@@ -36,7 +33,14 @@ func captureDashboard(ctx context.Context, mode, target string, o thermal.Option
 		pdfErr := pdf.save(path, r, &saved)
 		pngErr := png.save(path, r, &saved)
 		return tui.Result{Run: r, Saved: saved.String(), Err: errors.Join(pdfErr, pngErr)}
-	})
+	}
+}
+
+func captureDashboard(ctx context.Context, mode, target string, o thermal.Options, out, errOut io.Writer, work tui.Work) (bool, error) {
+	if !tui.Available(os.Stdin, out, errOut) {
+		return false, nil
+	}
+	result, started, uiErr := tui.Run(ctx, os.Stdin, out.(*os.File), tui.Config{Mode: mode, Target: target, Duration: o.Duration.Seconds(), StopTemp: o.StopTemp}, work)
 	if !started {
 		return false, nil
 	}

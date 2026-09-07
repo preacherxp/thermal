@@ -151,9 +151,13 @@ func (m *model) sample(event sampleMsg) {
 		c.state = "Running"
 		c.seconds = event.sample.Seconds
 		c.temp, c.power, c.clock, c.throttled = nil, nil, nil, nil
+		c.device = ""
 		var found *thermal.Device
 		for j := range event.sample.Devices {
 			d := &event.sample.Devices[j]
+			if m.cfg.Mode == "benchmark" && c.name == "GPU" && (event.sample.TargetID == "" || d.ID != event.sample.TargetID) {
+				continue
+			}
 			if strings.EqualFold(d.Kind, c.name) && (found == nil || found.Temp == nil && d.Temp != nil) {
 				found = d
 			}
@@ -173,17 +177,6 @@ func number(n *float64, unit string) string {
 		return "Unknown"
 	}
 	return fmt.Sprintf("%.1f%s", *n, unit)
-}
-func rate(n float64) string {
-	for _, s := range []struct {
-		n float64
-		s string
-	}{{1e12, "T"}, {1e9, "G"}, {1e6, "M"}, {1e3, "k"}} {
-		if n >= s.n {
-			return fmt.Sprintf("%.2f %s", n/s.n, s.s)
-		}
-	}
-	return fmt.Sprintf("%.1f", n)
 }
 func (m *model) finish(result Result) {
 	m.result = &result
@@ -208,20 +201,7 @@ func (m *model) finish(result Result) {
 			c.seconds = phase.Elapsed
 			c.temp, c.power, c.clock, c.throttled = nil, nil, nil, nil
 			c.trace = nil
-			stats := thermal.Summarize(phase, true)
-			var selected string
-			for id, s := range stats {
-				if !strings.EqualFold(s.Kind, c.name) {
-					continue
-				}
-				if phase.GPU != nil && !strings.EqualFold(strings.TrimSpace(s.Name), strings.TrimSpace(phase.GPU.Device)) {
-					continue
-				}
-				if selected == "" || stats[selected].Mean == nil && s.Mean != nil || stats[selected].Mean != nil && s.Mean != nil && *s.Mean > *stats[selected].Mean {
-					selected = id
-				}
-			}
-			s := stats[selected]
+			selected, s := thermal.TargetStats(phase, strings.ToLower(c.name))
 			c.device = s.Name
 			c.temp, c.power, c.clock = s.Mean, s.Power, s.Clock
 			if s.KnownThrottleSamples > 0 {
@@ -243,11 +223,11 @@ func (m *model) finish(result Result) {
 			if phase.GPU != nil {
 				c.device = phase.GPU.Device
 				if r := phase.GPU.Rate(); r != nil {
-					c.score = rate(*r) + " iterations/s"
+					c.score = thermal.CompactRate(*r) + " iterations/s"
 				}
 			}
 			if kind == "CPU" && phase.Operations > 0 && phase.Elapsed > 0 {
-				c.score = rate(float64(phase.Operations)/phase.Elapsed) + " hashes/s"
+				c.score = thermal.CompactRate(float64(phase.Operations)/phase.Elapsed) + " hashes/s"
 			}
 			if phase.Status != "complete" {
 				c.notes = "See the saved report for this test's limitation."

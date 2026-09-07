@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"time"
 )
 
@@ -29,9 +30,11 @@ type Device struct {
 	Throttled     *bool          `json:"thermal_throttling,omitempty"`
 }
 type Sample struct {
-	Seconds float64  `json:"seconds"`
-	CPU     *float64 `json:"cpu_pct"`
-	Devices []Device `json:"devices"`
+	// TargetID identifies the GPU sensor selected by the benchmark guard.
+	TargetID string   `json:"target_device_id,omitempty"`
+	Seconds  float64  `json:"seconds"`
+	CPU      *float64 `json:"cpu_pct"`
+	Devices  []Device `json:"devices"`
 }
 type App struct {
 	PID  int32   `json:"pid"`
@@ -73,14 +76,7 @@ func Number(v float64) *float64 {
 	}
 	return &v
 }
-func ValidStage(s string) bool {
-	for _, v := range Stages {
-		if s == v {
-			return true
-		}
-	}
-	return false
-}
+func ValidStage(s string) bool { return slices.Contains(Stages, s) }
 func NewRun() Run {
 	h, _ := os.Hostname()
 	now := time.Now().UTC()
@@ -100,27 +96,30 @@ func Save(r Run, path string) (string, error) {
 	if path == "" {
 		path = filepath.Join(DataDir(), r.ID+"-"+r.Stage+".json")
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return "", err
-	}
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return "", err
 	}
-	// Exclusive creation keeps previous measurements intact.
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
+	if err := saveExclusive(path, append(b, '\n')); err != nil {
 		return "", err
-	}
-	_, err = f.Write(append(b, '\n'))
-	closeErr := f.Close()
-	if err != nil {
-		return "", err
-	}
-	if closeErr != nil {
-		return "", closeErr
 	}
 	return path, nil
+}
+
+func saveExclusive(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	_, writeErr := f.Write(data)
+	err = errors.Join(writeErr, f.Close())
+	if err != nil {
+		return errors.Join(err, os.Remove(path))
+	}
+	return nil
 }
 func Load(path string) (Run, error) {
 	var r Run

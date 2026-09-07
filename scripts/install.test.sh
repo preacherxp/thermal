@@ -1,5 +1,4 @@
 #!/bin/sh
-# Offline integration test: real archives/hashes, mocked GitHub downloads and uname.
 set -eu
 root=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 fixture=$(mktemp -d)
@@ -50,7 +49,6 @@ for TEST_OS in Linux Darwin; do
         [ -x "$THERMAL_INSTALL_DIR/thermal" ]
     done
 done
-# A packaged installer must work with its pinned defaults and no overrides.
 sed 's|@VERSION@|v1.2.3|g; s|preacherxp/thermal|test-owner/thermal|g' "$root/install.sh" > "$fixture/pinned.sh"
 unset THERMAL_VERSION THERMAL_REPOSITORY
 sh "$fixture/pinned.sh"

@@ -23,7 +23,7 @@ func fixtureModel(t *testing.T) *model {
 	m.width, m.height = 104, 38
 	yes := true
 	for second := 0; second <= 20; second++ {
-		m.sample(sampleMsg{"GPU", thermal.Sample{Seconds: float64(second), Devices: []thermal.Device{{ID: "gpu", Name: "NVIDIA GeForce RTX 4080 Laptop GPU", Kind: "gpu", Temp: thermal.Number(60 + float64(second)), Power: thermal.Number(137.5), Clock: thermal.Number(2423), Throttled: &yes}}}})
+		m.sample(sampleMsg{"GPU", thermal.Sample{TargetID: "gpu", Seconds: float64(second), Devices: []thermal.Device{{ID: "gpu", Name: "NVIDIA GeForce RTX 4080 Laptop GPU", Kind: "gpu", Temp: thermal.Number(60 + float64(second)), Power: thermal.Number(137.5), Clock: thermal.Number(2423), Throttled: &yes}}}})
 	}
 	m.cards[0].state = "Awaiting result"
 	return m
@@ -121,5 +121,27 @@ func TestPipesAndDisabledColorUseFallback(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	if Available(os.Stdin, os.Stdout, os.Stderr) {
 		t.Fatal("NO_COLOR did not select fallback")
+	}
+}
+
+func TestLiveGPUUsesSelectedSensor(t *testing.T) {
+	m := fixtureModel(t)
+	sample := thermal.Sample{TargetID: "b", Devices: []thermal.Device{
+		{ID: "a", Name: "Idle GPU", Kind: "gpu", Temp: thermal.Number(40)},
+		{ID: "b", Name: "Benchmark GPU", Kind: "gpu", Temp: thermal.Number(89)},
+	}}
+	m.sample(sampleMsg{phase: "GPU", sample: sample})
+	if m.cards[1].device != "Benchmark GPU" || m.cards[1].temp == nil || *m.cards[1].temp != 89 {
+		t.Fatalf("wrong live GPU: %+v", m.cards[1])
+	}
+	sample.Devices = sample.Devices[:1]
+	m.sample(sampleMsg{phase: "GPU", sample: sample})
+	if m.cards[1].temp != nil {
+		t.Fatal("lost sensor replaced by unrelated GPU")
+	}
+	sample.TargetID = ""
+	m.sample(sampleMsg{phase: "GPU", sample: sample})
+	if m.cards[1].temp != nil {
+		t.Fatal("GPU selected before discovery")
 	}
 }

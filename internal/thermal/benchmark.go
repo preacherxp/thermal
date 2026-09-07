@@ -3,6 +3,7 @@ package thermal
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -89,7 +90,7 @@ func captureGPU(ctx context.Context, reader Reader, o Options, progress func(Sam
 	s.Seconds = 0
 	r.Samples[0] = s
 	for _, warning := range warnings {
-		if !contains(r.Warnings, warning) {
+		if !slices.Contains(r.Warnings, warning) {
 			r.Warnings = append(r.Warnings, warning)
 		}
 	}
@@ -98,6 +99,11 @@ func captureGPU(ctx context.Context, reader Reader, o Options, progress func(Sam
 		return r, nil
 	}
 	id := gpuSensorID(s, result.Device)
+	s.TargetID = id
+	r.Samples[0] = s
+	if progress != nil {
+		progress(s)
+	}
 	if reason := gpuGuard(s, id, o.StopTemp, o.AllowUnmonitored); reason != "" {
 		r.Status = "refused"
 		r.Warnings = append(r.Warnings, reason)
@@ -140,9 +146,10 @@ loop:
 				break loop
 			}
 			sample.Seconds = time.Since(start).Seconds()
+			sample.TargetID = id
 			r.Samples = append(r.Samples, sample)
 			for _, warning := range w {
-				if !contains(r.Warnings, warning) {
+				if !slices.Contains(r.Warnings, warning) {
 					r.Warnings = append(r.Warnings, warning)
 				}
 			}
@@ -163,7 +170,7 @@ loop:
 	if ctx.Err() != nil {
 		r.Status = "interrupted"
 	}
-	if err != nil && !contains(r.Warnings, err.Error()) {
+	if err != nil && !slices.Contains(r.Warnings, err.Error()) {
 		r.Warnings = append(r.Warnings, err.Error())
 	}
 	if r.Status == "complete" && (err != nil || !done || result.Rate() == nil) {

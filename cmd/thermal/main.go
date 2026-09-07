@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -178,8 +177,8 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	if mode == "benchmark" {
 		f.StringVar(&target, "target", "both", "Benchmark target: cpu, gpu, or both (sequential)")
 	}
-	pngOptions := addPNGFlags(f)
-	pdfOptions := addPDFFlags(f)
+	pngOptions := addExportFlags(f, "png")
+	pdfOptions := addExportFlags(f, "pdf")
 	surveyOptions := addSurveyFlags(f)
 	if err := f.Parse(args); err != nil {
 		return err
@@ -229,8 +228,9 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	if prepared != nil {
 		o.Profile = prepared.Profile
 	}
+	work := captureWork(mode, target, o, *output, pdfOptions, pngOptions)
 	if !*noTUI && !*asJSON && !*verbose {
-		if handled, err := captureDashboard(ctx, mode, target, o, *output, pdfOptions, pngOptions, out, errOut); handled {
+		if handled, err := captureDashboard(ctx, mode, target, o, out, errOut, work); handled {
 			return err
 		}
 	}
@@ -239,33 +239,21 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 		fmt.Fprintf(errOut, "Benchmark %s: %s per test, %d CPU workers, stop limit %.1f C. Temperature checks are best effort, not hardware protection.\n", target, duration.String(), *workers, *stop)
 	}
 	progress, finish := thermal.NewProgress(errOut, duration.Seconds())
-	var r thermal.Run
-	var err error
-	if mode == "benchmark" {
-		phase := ""
-		r, err = thermal.CaptureBenchmarks(ctx, thermal.NewSensors(), o, target, func(kind string, s thermal.Sample) {
-			if phase != kind {
-				finish()
-				fmt.Fprintln(errOut, kind+" benchmark")
-				phase = kind
-			}
-			progress(s)
-		})
-	} else {
-		r, err = thermal.Capture(ctx, thermal.NewSensors(), o, progress)
-	}
+	phase := ""
+	result := work(ctx, func(kind string, s thermal.Sample) {
+		if mode == "benchmark" && phase != kind {
+			finish()
+			fmt.Fprintln(errOut, kind+" benchmark")
+			phase = kind
+		}
+		progress(s)
+	})
 	finish()
-	if err != nil {
-		return err
+	if result.Saved == "" {
+		return result.Err
 	}
-	path, err := thermal.Save(r, *output)
-	if err != nil {
-		return fmt.Errorf("save run: %w", err)
-	}
-	var saved bytes.Buffer
-	fmt.Fprintln(&saved, "Saved "+path)
-	pdfErr := pdfOptions.save(path, r, &saved)
-	pngErr := pngOptions.save(path, r, &saved)
+	r := result.Run
+	var err error
 	if *asJSON {
 		err = writeJSON(out, r)
 	} else if mode == "benchmark" && !*verbose {
@@ -273,12 +261,12 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	} else {
 		thermal.Report(out, r)
 	}
-	fmt.Fprint(errOut, saved.String())
+	fmt.Fprint(errOut, result.Saved)
 	if err != nil {
 		return err
 	}
-	if exportErr := errors.Join(pdfErr, pngErr); exportErr != nil {
-		return exportErr
+	if result.Err != nil {
+		return result.Err
 	}
 	if r.Status != "complete" {
 		return fmt.Errorf("run %s (results saved)", r.Status)
@@ -312,8 +300,8 @@ func importCSV(args []string, out, errOut io.Writer) error {
 	device := f.String("device", "imported-gpu", "Stable GPU identifier, shared between before/after imports")
 	profile := f.String("profile", "unknown", "Recorded thermal profile")
 	workload := f.String("workload", "external-gpu", "Original workload label")
-	pngOptions := addPNGFlags(f)
-	pdfOptions := addPDFFlags(f)
+	pngOptions := addExportFlags(f, "png")
+	pdfOptions := addExportFlags(f, "pdf")
 	if err := f.Parse(args); err != nil {
 		return err
 	}
@@ -397,8 +385,8 @@ func importCSV(args []string, out, errOut io.Writer) error {
 	if len(r.Samples) == 0 {
 		return errors.New("CSV contains no samples")
 	}
-	r.Duration = last
-	r.Elapsed = last
+	r.Duration = last - r.Samples[0].Seconds
+	r.Elapsed = r.Duration
 	if len(r.Samples) > 1 {
 		r.Interval = (last - r.Samples[0].Seconds) / float64(len(r.Samples)-1)
 	}

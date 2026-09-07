@@ -100,7 +100,7 @@ Use `chmod +x thermal` if your extraction tool dropped executable permissions. O
 
 ## Build from source (optional)
 
-With Go 1.23 or newer installed:
+With Go 1.26.8 or newer installed:
 
 ```sh
 go run ./cmd/thermal demo --pdf demo.pdf --png demo.png

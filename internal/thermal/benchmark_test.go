@@ -178,3 +178,33 @@ func TestSuiteComparisonKeepsPhasesSeparate(t *testing.T) {
 		t.Fatal("different GPUs compared")
 	}
 }
+
+func TestGPUProgressCarriesGuardSensor(t *testing.T) {
+	g := &fakeGPUSession{}
+	s := gpuSample(50)
+	s.Devices = append([]Device{{ID: "other", Name: "Idle GPU", Kind: "gpu", Temp: Number(40)}}, s.Devices...)
+	var progress []Sample
+	r, err := captureGPU(context.Background(), &fakeReader{samples: []Sample{s}}, testOptions(), func(s Sample) { progress = append(progress, s) }, func(context.Context, time.Duration) (gpuSession, error) { return g, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(progress) < 3 || progress[0].TargetID != "" {
+		t.Fatal("expected discovery then selected-target progress")
+	}
+	for _, sample := range progress[1:] {
+		if sample.TargetID != "gpu:0" {
+			t.Fatalf("wrong progress sensor: %q", sample.TargetID)
+		}
+	}
+	path, err := Save(r, filepath.Join(t.TempDir(), "run.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id, _ := TargetStats(restored, "gpu"); id != "gpu:0" {
+		t.Fatalf("saved target changed: %q", id)
+	}
+}

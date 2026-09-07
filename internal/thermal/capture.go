@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -153,7 +154,7 @@ loop:
 			sample.Seconds = time.Since(start).Seconds()
 			r.Samples = append(r.Samples, sample)
 			for _, v := range w {
-				if !contains(r.Warnings, v) {
+				if !slices.Contains(r.Warnings, v) {
 					r.Warnings = append(r.Warnings, v)
 				}
 			}
@@ -181,12 +182,4 @@ loop:
 		r.Warnings = append(r.Warnings, "Too few samples for a sustained thermal assessment; run for longer")
 	}
 	return r, nil
-}
-func contains(xs []string, s string) bool {
-	for _, x := range xs {
-		if x == s {
-			return true
-		}
-	}
-	return false
 }

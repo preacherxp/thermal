@@ -3,6 +3,7 @@ package thermal
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -98,6 +99,34 @@ func TestPNGWrapLongText(t *testing.T) {
 	for _, line := range wrapPNG(strings.Repeat("verylongname", 80)+" unknown 日本語", 24, 280) {
 		if textWidth(line, 24) > 280 {
 			t.Fatalf("text exceeds card: %s", line)
+		}
+	}
+}
+
+func TestPNGManySensorsAndSuites(t *testing.T) {
+	r := fixture("baseline", 60, 20, 1000)
+	for i := range r.Samples {
+		r.Samples[i].Devices = nil
+		for j := 0; j < 48; j++ {
+			r.Samples[i].Devices = append(r.Samples[i].Devices, Device{ID: fmt.Sprint(j), Name: fmt.Sprintf("Core %d", j), Kind: "cpu", Temp: Number(60)})
+		}
+	}
+	gpu := r
+	gpu.Workload = "gpu-integer-v1"
+	suite := r
+	suite.Workload = "cpu-gpu-suite-v1"
+	suite.Samples = nil
+	suite.Phases = []Run{r, gpu}
+	for _, run := range []Run{r, suite} {
+		for _, after := range []*Run{nil, &run} {
+			var out bytes.Buffer
+			if err := WriteReportPNG(&out, run, after); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := png.DecodeConfig(&out)
+			if err != nil || cfg.Height > 24000 {
+				t.Fatalf("invalid PNG: %+v %v", cfg, err)
+			}
 		}
 	}
 }

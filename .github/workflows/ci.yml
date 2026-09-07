@@ -1,0 +1,65 @@
+name: test-and-release
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: go run ./scripts/dist check-deps
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go run ./scripts/dist build --local
+      - run: go test ./scripts/smoke -count=1
+        env:
+          THERMAL_TEST_NATIVE: '1'
+      - name: Test shell installer
+        if: runner.os != 'Windows'
+        run: sh scripts/install.test.sh
+      - name: Test Windows installer
+        if: runner.os == 'Windows'
+        run: ./scripts/install.test.ps1
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: go run ./scripts/dist build
+      - run: go run ./scripts/dist package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thermal-release
+          path: release/
+          if-no-files-found: error
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: thermal-release
+          path: release
+      - name: Publish tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" release/*/* --verify-tag --generate-notes --title "Thermal $RELEASE_TAG"

@@ -20,8 +20,10 @@ type Reader interface {
 	Read(context.Context) (Sample, []string)
 }
 type Sensors struct {
-	rapl raplSampler
-	cpu  cpuSampler
+	rapl    raplSampler
+	ioPower ioReportSampler
+	smc     smcSampler
+	cpu     cpuSampler
 }
 
 func NewSensors() *Sensors { s := &Sensors{}; s.cpu.read(context.Background()); return s }
@@ -245,13 +247,21 @@ func (reader *Sensors) Read(ctx context.Context) (Sample, []string) {
 			warnings = append(warnings, "CPU temperature/power unavailable through native Windows APIs; optional providers can be enabled with THERMAL_EXTERNAL_PROVIDERS=1")
 		}
 	case "darwin":
+		// Sample energy before SMC discovery so the second read has a baseline.
+		readings, powerErr := reader.ioPower.read(ctx)
+		ds, err = reader.smc.read(ctx)
+		ds = attachIOReportPower(ds, readings)
+		if powerErr != nil {
+			warnings = append(warnings, "Native macOS wattage unavailable: "+powerErr.Error())
+		}
 		if externalProviders() {
-			ds, err = macSensors(ctx)
-		} else {
-			err = fmt.Errorf("native thermal telemetry unavailable")
+			extra, e := macSensors(ctx)
+			if e == nil {
+				ds = append(ds, extra...)
+			}
 		}
 		if err != nil {
-			warnings = append(warnings, "Native macOS CPU/GPU temperature and power are unavailable; optional Apple Silicon macmon integration requires THERMAL_EXTERNAL_PROVIDERS=1")
+			warnings = append(warnings, "Native macOS temperature unavailable: "+err.Error()+"; optional Apple Silicon macmon integration requires THERMAL_EXTERNAL_PROVIDERS=1")
 		}
 	}
 	s.Devices = append(s.Devices, ds...)

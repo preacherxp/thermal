@@ -10,9 +10,9 @@ Run both benchmarks and save PDF findings and PNG results with one command:
 thermal
 ```
 
-This benchmarks the CPU for 30 seconds, then the GPU for 30 seconds, without survey prompts. It saves JSON measurements, a PDF findings report, and a PNG with separate CPU/GPU scores, thermal timelines, and statuses. The GPU compute backend currently supports Windows with an installed OpenCL GPU driver. Unsupported or refused tests are clearly marked; no score is fabricated.
+This benchmarks the CPU for 30 seconds, then the GPU for 30 seconds, without survey prompts. It saves JSON measurements, a PDF findings report, and a PNG with separate CPU/GPU scores, thermal timelines, and statuses. The GPU compute backend supports macOS through its system OpenCL framework and Windows with an installed OpenCL GPU driver. Unsupported or refused tests are clearly marked; no score is fabricated.
 
-Each target requires its own readable temperature. CPU temperature is unavailable through the native Windows/macOS APIs used here, so the CPU phase is refused unless a provider is configured or the user explicitly chooses `--allow-unmonitored`. The monitored GPU phase can still run. A partial suite returns exit code 1 and saves its results.
+Each target requires its own readable temperature. macOS reads native AppleSMC CPU die temperatures and Apple Silicon GPU temperatures. Apple Silicon CPU/GPU wattage is read natively through IOReport; values are interval-average energy-model estimates, not wall power. Intel/discrete GPU sensor identity is not inferred. Windows CPU temperature is unavailable through the native APIs used here, so its CPU phase is refused unless a provider is configured or the user explicitly chooses `--allow-unmonitored`. The monitored GPU phase can still run. A partial suite returns exit code 1 and saves its results.
 
 For passive monitoring, use `thermal record --survey skip --duration 30s`.
 
@@ -87,8 +87,11 @@ Below, `thermal` means the installed executable on PATH. From an extracted relea
   Review warnings; temperatures alone do not prove a cooling fault or causality.
 - Missing/null readings mean unknown, not zero. Power limits are not consumption;
   overlapping power channels must not be summed. Demo readings are synthetic.
-- Native CPU temperatures are unavailable on Windows/macOS with the default
-  providers. Optional integrations require `THERMAL_EXTERNAL_PROVIDERS=1` and
+- Native CPU temperatures are unavailable on Windows with the default provider.
+  macOS uses read-only AppleSMC access and native Apple Silicon IOReport power
+  counters; unavailable temperature sensors still refuse load. Missing energy
+  counters and invalid/reset sampling intervals produce unknown watts, not zero.
+  Optional integrations require `THERMAL_EXTERNAL_PROVIDERS=1` and
   separate setup; consult [README.md](README.md). No providers install automatically.
 
 CSV import: `thermal import --device same-gpu --out run.json input.csv`.

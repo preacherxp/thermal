@@ -75,8 +75,10 @@ Use `--out run.json` to choose an output path, `--json` for JSON stdout, `--pdf 
 ## Know before you toast
 
 - Benchmarks require a readable target temperature and default to a **90 °C stop limit**. Missing monitoring refuses that test; `--allow-unmonitored` explicitly permits load without it.
-- **Windows/macOS CPU temperatures are unavailable by default.** Optional providers include LibreHardwareMonitor WMI on Windows and macmon on Apple Silicon. Configure your chosen provider separately, then set `THERMAL_EXTERNAL_PROVIDERS=1`; nothing installs automatically.
-- **GPU benchmarking currently requires Windows and an OpenCL GPU driver.** Other platforms mark it unavailable. Scores measure compute throughput, not gaming FPS.
+- **macOS uses native AppleSMC temperature readings**, without sudo or extra tools. Apple Silicon monitors the CPU die and integrated GPU; Intel CPU monitoring depends on exposed SMC keys. Intel/discrete GPU sensor identity is not inferred, so those GPU tests still require a matching provider or explicit unmonitored mode. Missing sensors remain unknown.
+- **Apple Silicon CPU/GPU wattage works natively through IOReport**, without sudo, macmon, or opt-in flags. Values are interval-average estimates from Apple’s Energy Model, not whole-computer wall power. Missing counters stay unknown, and overlapping domain/die totals are never added together.
+- **Windows CPU temperatures require a provider.** Optional providers include LibreHardwareMonitor WMI on Windows and macmon on Apple Silicon for additional telemetry. Configure your chosen provider separately, then set `THERMAL_EXTERNAL_PROVIDERS=1`; nothing installs automatically.
+- **GPU benchmarking uses the system OpenCL framework on macOS and an installed OpenCL GPU driver on Windows.** Other platforms mark it unavailable. Results are verified on the CPU; scores measure compute throughput, not gaming FPS. Apple has deprecated OpenCL, so a missing framework or unsupported device is reported explicitly.
 - Refused or unavailable tests stay in the report; partial suites return exit code 1. Missing readings stay unknown. Guessing is not a sensor.
 - Compare the same workload under similar conditions. Temperature alone cannot diagnose a cooling fault, and software limits do not replace hardware protection.
 

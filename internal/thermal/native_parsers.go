@@ -50,20 +50,3 @@ func parseProcessStat(raw string, hz float64) (processSample, bool) {
 	}
 	return processSample{int32(pid), raw[first+1 : last], float64(u+s) / hz, f[19], time.Now()}, true
 }
-
-func parseMacCPU(raw string) *float64 {
-	var result *float64
-	for _, line := range strings.Split(raw, "\n") {
-		if strings.HasPrefix(line, "CPU usage:") {
-			f := strings.Fields(line)
-			if len(f) >= 6 {
-				user := parseNumber(strings.TrimSuffix(f[2], "%"))
-				system := parseNumber(strings.TrimSuffix(f[4], "%"))
-				if user != nil && system != nil {
-					result = Number(*user + *system)
-				}
-			}
-		}
-	}
-	return result
-}

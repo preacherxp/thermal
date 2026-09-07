@@ -121,7 +121,9 @@ Interactive captures open a live dashboard. --no-tui uses minimal console output
 Redirected output and --json use the minimal path; --verbose shows full tables.
 Run thermal record --help or thermal benchmark --help for options.
 Captures and imports save PDF and PNG beside the JSON; --no-pdf / --no-png disable them.
-GPU compute uses an OpenCL GPU driver on Windows; other platforms report unavailable.
+GPU compute uses OpenCL on macOS and Windows; other platforms report unavailable.
+macOS reads native AppleSMC temperatures; GPU monitoring supports Apple Silicon.
+Apple Silicon CPU/GPU watts use native IOReport energy-model estimates.
 Use record for monitoring without built-in load.
 `)
 }

@@ -60,6 +60,21 @@ func TestNativeDefaultBenchmark(t *testing.T) {
 		if p.Duration != 30 {
 			t.Fatal("wrong phase duration")
 		}
+		// A native AppleSMC reading must lead to an attempted monitored test.
+		// This catches regressions where macOS silently becomes unsupported again.
+		if runtime.GOOS == "darwin" && len(p.Samples) > 0 {
+			if p.Workload == "cpu-sha256-v1" && thermal.Guard(p.Samples[0], p.StopTemp, false) == "" && p.Status == "refused" {
+				t.Fatalf("readable macOS CPU refused: %v", p.Warnings)
+			}
+			for _, d := range p.Samples[0].Devices {
+				if (d.ID == "smc:gpu" || d.ID == "smc:TCMz" || d.ID == "smc:TCMb") && d.Temp != nil && p.Status == "complete" && d.Power == nil {
+					t.Fatalf("native Apple Silicon %s wattage missing: %v", d.Kind, p.Warnings)
+				}
+				if d.ID == "smc:gpu" && d.Temp != nil && p.Workload == "gpu-integer-v1" && p.Status == "unavailable" {
+					t.Fatalf("Apple Silicon GPU backend unavailable: %v", p.Warnings)
+				}
+			}
+		}
 		if p.Status == "complete" {
 			if p.Workload == "cpu-sha256-v1" && p.Operations == 0 {
 				t.Fatal("CPU benchmark did no work")

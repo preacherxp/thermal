@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -31,13 +32,31 @@ func nativeHardware(ctx context.Context, h *HardwareInfo) {
 		}
 	}
 }
+
+var macCPUAPI = sync.OnceValues(func() (map[string]uintptr, error) {
+	_, procs, err := macOpen("/usr/lib/libSystem.B.dylib", []string{"mach_host_self", "host_statistics", "mach_task_self", "mach_port_deallocate"})
+	return procs, err
+})
+
 func (s *cpuSampler) read(ctx context.Context) *float64 {
-	// top is part of macOS; the second sample is the current one-second interval.
-	raw, e := command(ctx, "/usr/bin/top", "-l", "2", "-s", "1", "-n", "0")
-	if e != nil {
+	if ctx.Err() != nil {
 		return nil
 	}
-	return parseMacCPU(string(raw))
+	procs, err := macCPUAPI()
+	if err != nil {
+		return nil
+	}
+	host := macCall(procs["mach_host_self"])
+	if host == 0 {
+		return nil
+	}
+	defer macCall(procs["mach_port_deallocate"], macCall(procs["mach_task_self"]), host)
+	var ticks [4]uint32 // user, system, idle, nice
+	count := uint32(len(ticks))
+	if macCall(procs["host_statistics"], host, 3, uintptr(unsafe.Pointer(&ticks[0])), uintptr(unsafe.Pointer(&count))) != 0 || count != 4 {
+		return nil
+	}
+	return s.update(uint64(ticks[0])+uint64(ticks[1])+uint64(ticks[2])+uint64(ticks[3]), uint64(ticks[2]))
 }
 
 func nativeProcesses(ctx context.Context) map[int32]processSample {

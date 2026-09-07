@@ -83,11 +83,5 @@ func TestMacOSTextCounters(t *testing.T) {
 			t.Fatalf("accepted %q", v)
 		}
 	}
-	got := parseMacCPU("CPU usage: 90.0% user, 1.0% sys, 9.0% idle\nCPU usage: 3.25% user, 2.5% sys, 94.25% idle")
-	if got == nil || *got != 5.75 {
-		t.Fatalf("must use final interval: %v", got)
-	}
-	if parseMacCPU("CPU usage: bad% user, 0% sys, 100% idle") != nil {
-		t.Fatal("malformed sample")
-	}
+
 }

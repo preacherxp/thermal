@@ -72,6 +72,11 @@ func TestNativeDefaultBenchmark(t *testing.T) {
 	if (r.Status == "complete") != (cmd.ProcessState.ExitCode() == 0) {
 		t.Fatal("exit status disagrees with report")
 	}
+	pdf := defaultPDFPath(files[0])
+	assertPDF(t, pdf)
+	if !strings.Contains(string(output), pdf) {
+		t.Fatal("PDF path not printed")
+	}
 	png := strings.TrimSuffix(files[0], ".json") + ".png"
 	assertPNG(t, png)
 	if !strings.Contains(string(output), files[0]) || !strings.Contains(string(output), png) {

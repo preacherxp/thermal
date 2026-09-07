@@ -17,8 +17,12 @@ function Invoke-TestInstall {
     & $installer -Repository test-owner/thermal -Version v1.2.3 -InstallDir (Join-Path $fixture 'install with spaces')
 }
 function Assert-Failure {
+    param([string]$ExpectedMessage)
     $failed = $false
-    try { Invoke-TestInstall } catch { $failed = $true }
+    try { Invoke-TestInstall } catch {
+        if ($ExpectedMessage -and $_.Exception.Message -notlike $ExpectedMessage) { throw }
+        $failed = $true
+    }
     if (-not $failed) { throw 'Expected installation to fail.' }
     if ([IO.File]::ReadAllText((Join-Path $fixture 'install with spaces\thermal.exe')) -ne 'previous installation') { throw 'Failed installation replaced the existing executable.' }
 }
@@ -33,6 +37,8 @@ try {
         $checksums += "$hash  $name"
     }
     $checksums | Set-Content -LiteralPath (Join-Path $fixture 'checksums.txt') -Encoding ASCII
+    # Simulate a host without the cmdlet after generating the fixture checksums.
+    function Get-FileHash { throw 'Get-FileHash is unavailable in this host.' }
     foreach ($arch in @('AMD64', 'ARM64')) {
         $env:PROCESSOR_ARCHITECTURE = $arch
         $env:PROCESSOR_ARCHITEW6432 = ''
@@ -45,7 +51,7 @@ try {
     Invoke-TestInstall
     [IO.File]::WriteAllText((Join-Path $fixture 'install with spaces\thermal.exe'), 'previous installation')
     Add-Content -LiteralPath (Join-Path $fixture 'thermal-windows-arm64.zip') -Value 'corrupt'
-    Assert-Failure
+    Assert-Failure -ExpectedMessage 'Checksum mismatch; installation cancelled.'
     $script:failDownload = $true
     Assert-Failure
     $script:failDownload = $false
@@ -59,6 +65,7 @@ try {
     $env:PROCESSOR_ARCHITECTURE = $savedArchitecture
     $env:PROCESSOR_ARCHITEW6432 = $savedNativeArchitecture
     Remove-Item Function:\curl.exe
+    if (Test-Path Function:\Get-FileHash) { Remove-Item Function:\Get-FileHash }
     $resolvedFixture = [IO.Path]::GetFullPath($fixture)
     if ($resolvedFixture.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and (Split-Path $resolvedFixture -Leaf) -match '^thermal-test-[0-9a-f]{32}$') {
         if (Test-Path -LiteralPath $resolvedFixture) { Remove-Item -LiteralPath $resolvedFixture -Recurse -Force }

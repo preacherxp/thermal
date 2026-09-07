@@ -84,7 +84,7 @@ func TestDoctorAndSurveyWithoutHelpers(t *testing.T) {
 	}
 }
 
-func TestRecordingAndPNGWithoutHelpers(t *testing.T) {
+func TestRecordingAndReportsWithoutHelpers(t *testing.T) {
 	dir := t.TempDir()
 	output := filepath.Join(dir, "run with spaces.json")
 	out, stderr, err := native(t, "record", "--survey", "skip", "--duration", "1s", "--out", output, "--json")
@@ -112,12 +112,19 @@ func TestRecordingAndPNGWithoutHelpers(t *testing.T) {
 	if len(png) < 24 || !bytes.Equal(png[:8], []byte{137, 80, 78, 71, 13, 10, 26, 10}) || binary.BigEndian.Uint32(png[16:20]) != 1440 {
 		t.Fatal("invalid PNG")
 	}
+	pdf, err := os.ReadFile(strings.TrimSuffix(output, ".json") + ".pdf")
+	if err != nil || !bytes.HasPrefix(pdf, []byte("%PDF-1.4")) || !bytes.HasSuffix(pdf, []byte("%%EOF\n")) {
+		t.Fatalf("invalid automatic PDF: %v", err)
+	}
 	output = filepath.Join(dir, "no image.json")
-	out, stderr, err = native(t, "record", "--survey", "skip", "--duration", "1s", "--out", output, "--json", "--no-png")
+	out, stderr, err = native(t, "record", "--survey", "skip", "--duration", "1s", "--out", output, "--json", "--no-png", "--no-pdf")
 	if err != nil || !json.Valid(out) {
 		t.Fatalf("JSON only: %s %s %v", out, stderr, err)
 	}
 	if _, err := os.Stat(strings.TrimSuffix(output, ".json") + ".png"); !os.IsNotExist(err) {
 		t.Fatal("--no-png created an image")
+	}
+	if _, err := os.Stat(strings.TrimSuffix(output, ".json") + ".pdf"); !os.IsNotExist(err) {
+		t.Fatal("--no-pdf created a report")
 	}
 }

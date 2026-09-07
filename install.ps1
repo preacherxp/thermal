@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [string]$Repository = $(if ($env:THERMAL_REPOSITORY) { $env:THERMAL_REPOSITORY } else { 'preacherxp/thermal' }),
-    [string]$Version = $(if ($env:THERMAL_VERSION) { $env:THERMAL_VERSION } else { '@VERSION@' }),
+    [string]$Version = $(if ($env:THERMAL_VERSION) { $env:THERMAL_VERSION } else { 'v0.4.0' }),
     [string]$InstallDir = $(if ($env:THERMAL_INSTALL_DIR) { $env:THERMAL_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Thermal\bin' })
 )
 $ErrorActionPreference = 'Stop'
@@ -30,7 +30,14 @@ try {
     $entries = @(Get-Content -LiteralPath (Join-Path $tempDir 'checksums.txt') | Where-Object { $_ -match ('^[0-9a-fA-F]{64}  ' + [regex]::Escape($archive) + '$') })
     if ($entries.Count -ne 1) { throw 'Missing or duplicate archive checksum.' }
     $expected = $entries[0].Substring(0, 64)
-    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $tempDir $archive)).Hash
+    # Use .NET directly: Get-FileHash is not available in every PowerShell host.
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [IO.File]::OpenRead((Join-Path $tempDir $archive))
+        try {
+            $actual = [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '')
+        } finally { $stream.Dispose() }
+    } finally { $sha256.Dispose() }
     if ($actual -ne $expected) { throw 'Checksum mismatch; installation cancelled.' }
     $InstallDir = [IO.Path]::GetFullPath($InstallDir)
     $null = [IO.Directory]::CreateDirectory($InstallDir)

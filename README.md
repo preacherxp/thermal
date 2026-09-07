@@ -1,6 +1,6 @@
 # Thermal
 
-CPU/GPU benchmarks, temperature recordings, and before/after comparisons—with PNG reports. For computers auditioning to become space heaters.
+CPU/GPU benchmarks, temperature recordings, and before/after comparisons—with PDF findings and PNG reports. For computers auditioning to become space heaters.
 
 One standalone binary. No runtime to install. Your data stays local.
 
@@ -31,6 +31,14 @@ Installs to `%LOCALAPPDATA%\Thermal\bin`. Add that directory to PATH or use the 
 
 Both installers select your architecture and verify SHA-256 checksums. No administrator access required.
 
+If Windows installation fails with `Get-FileHash is not recognized`, the downloaded installer requires a cmdlet unavailable in your PowerShell host. The corrected [repository installer](install.ps1) uses .NET SHA-256 hashing directly. From the repository root, run it with the release tag you want to install, for example:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version v0.4.0
+```
+
+Release downloads only receive this fix when an updated installer is published. You can also download and extract the Windows archive as described below.
+
 ### 2. Download a prebuilt GitHub release
 
 Grab an archive from [GitHub Releases](https://github.com/preacherxp/thermal/releases/latest) and extract it. Windows, Linux, and macOS support **x64 (`amd64`)** and **ARM64 (`arm64`)**; macOS assets use the name `darwin`.
@@ -43,7 +51,7 @@ Run `./thermal` on macOS/Linux or `.\thermal.exe` in PowerShell. Use `chmod +x t
 thermal
 ```
 
-Benchmarks CPU, then GPU, for **30 seconds each**. No survey prompts. Saves JSON and PNG reports and prints their paths.
+Benchmarks CPU, then GPU, for **30 seconds each**. No survey prompts. Saves JSON, PDF, and PNG reports and prints their paths. The PDF uses a minimal A4 layout with CPU/GPU scores, thermal charts, evidence-based findings, and a suggested next step.
 
 | Want to… | Command |
 | --- | --- |
@@ -51,13 +59,13 @@ Benchmarks CPU, then GPU, for **30 seconds each**. No survey prompts. Saves JSON
 | Test just the CPU | `thermal --target cpu` |
 | Change each test's duration | `thermal --duration 60s` |
 | Monitor a running game without adding load | `thermal record --survey skip --workload my-game --duration 120s` |
-| Compare saved runs | `thermal compare before.json after.json --png comparison.png` |
-| Try a synthetic report without load | `thermal demo --png demo.png` |
+| Compare saved runs | `thermal compare before.json after.json --pdf comparison.pdf --png comparison.png` |
+| Try a synthetic report without load | `thermal demo --pdf demo.pdf --png demo.png` |
 | See all options | `thermal --help` |
 
 [See a sample PNG](examples/comparison.png) · [More examples](RUN.md) · [Automation guide](AGENTS.md)
 
-Use `--out run.json` to choose an output path, `--json` for JSON stdout, or `--no-png` to skip the image. Existing reports are never overwritten. Ctrl+C saves partial results.
+Use `--out run.json` to choose an output path, `--json` for JSON stdout, `--pdf report.pdf` for a custom PDF path, or `--no-pdf` / `--no-png` to skip either export. Existing reports are never overwritten. Ctrl+C saves partial results.
 
 ## Know before you toast
 

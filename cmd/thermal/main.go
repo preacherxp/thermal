@@ -90,7 +90,7 @@ Usage: thermal [options]
        thermal <command> [options]
 
 Run thermal with no arguments to benchmark CPU, then GPU, for 30 seconds each.
-It saves JSON and PNG results automatically without prompts.
+It saves JSON, PDF findings, and PNG results automatically without prompts.
 Unavailable tests are marked in the report; missing temperatures require
 --allow-unmonitored to run without temperature monitoring.
 
@@ -98,18 +98,18 @@ Unavailable tests are marked in the report; missing temperatures require
   doctor       Detect sensors and explain platform setup
   record       Monitor an idle or external workload and save a run
   benchmark    Test CPU and GPU (--target cpu|gpu|both; default both)
-  compare      Compare BEFORE.json AFTER.json [--json] [--png FILE.png]
-  report       Show a saved RUN.json [--png FILE.png]
+  compare      Compare BEFORE.json AFTER.json [--json] [--pdf FILE.pdf] [--png FILE.png]
+  report       Show a saved RUN.json [--pdf FILE.pdf] [--png FILE.png]
   history      List saved runs
   stages       List intervention stages
   import       Import an existing NVIDIA thermal CSV
-  demo         Synthetic before/after comparison [--png FILE.png] (no load)
+  demo         Synthetic before/after comparison [--pdf FILE.pdf] [--png FILE.png] (no load)
   version      Print version
 
 Start:
   thermal
   thermal --duration 60s --out run.json
-  thermal --json --no-png
+  thermal --json --no-png --no-pdf
 
 Other tasks:
   thermal doctor --json
@@ -117,7 +117,7 @@ Other tasks:
   thermal compare before.json after.json --png comparison.png
 
 Run thermal record --help or thermal benchmark --help for options.
-Recordings and imports save a PNG beside the JSON; --no-png disables it.
+Captures and imports save PDF and PNG beside the JSON; --no-pdf / --no-png disable them.
 GPU compute uses an OpenCL GPU driver on Windows; other platforms report unavailable.
 Use record for monitoring without built-in load.
 `)
@@ -172,6 +172,7 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 		f.StringVar(&target, "target", "both", "Benchmark target: cpu, gpu, or both (sequential)")
 	}
 	pngOptions := addPNGFlags(f)
+	pdfOptions := addPDFFlags(f)
 	surveyOptions := addSurveyFlags(f)
 	if err := f.Parse(args); err != nil {
 		return err
@@ -183,6 +184,9 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 		return errors.New("--target must be cpu, gpu, or both")
 	}
 	if err := pngOptions.validate(*output); err != nil {
+		return err
+	}
+	if err := pdfOptions.validate(*output); err != nil {
 		return err
 	}
 	if *power != "ac" && *power != "battery" && *power != "unknown" {
@@ -247,6 +251,7 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 		return fmt.Errorf("save run: %w", err)
 	}
 	fmt.Fprintln(errOut, "Saved "+path)
+	pdfErr := pdfOptions.save(path, r, errOut)
 	pngErr := pngOptions.save(path, r, errOut)
 	if *asJSON {
 		err = writeJSON(out, r)
@@ -256,8 +261,8 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	if err != nil {
 		return err
 	}
-	if pngErr != nil {
-		return pngErr
+	if exportErr := errors.Join(pdfErr, pngErr); exportErr != nil {
+		return exportErr
 	}
 	if r.Status != "complete" {
 		return fmt.Errorf("run %s (results saved)", r.Status)
@@ -292,6 +297,7 @@ func importCSV(args []string, out, errOut io.Writer) error {
 	profile := f.String("profile", "unknown", "Recorded thermal profile")
 	workload := f.String("workload", "external-gpu", "Original workload label")
 	pngOptions := addPNGFlags(f)
+	pdfOptions := addPDFFlags(f)
 	if err := f.Parse(args); err != nil {
 		return err
 	}
@@ -299,6 +305,9 @@ func importCSV(args []string, out, errOut io.Writer) error {
 		return errors.New("usage: thermal import [--stage fans-cleaned] [--out RUN.json] FILE.csv")
 	}
 	if err := pngOptions.validate(*output); err != nil {
+		return err
+	}
+	if err := pdfOptions.validate(*output); err != nil {
 		return err
 	}
 	h, err := os.Open(f.Arg(0))
@@ -383,7 +392,9 @@ func importCSV(args []string, out, errOut io.Writer) error {
 	}
 	fmt.Fprintln(errOut, "Saved "+path)
 	thermal.Report(out, r)
-	return pngOptions.save(path, r, errOut)
+	pdfErr := pdfOptions.save(path, r, errOut)
+	pngErr := pngOptions.save(path, r, errOut)
+	return errors.Join(pdfErr, pngErr)
 }
 func demo() (thermal.Run, thermal.Run) {
 	a := thermal.NewRun()

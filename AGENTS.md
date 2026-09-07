@@ -4,13 +4,13 @@
 
 Install with curl or download a prebuilt GitHub release; see [README.md](README.md#install). The standalone executable needs no language runtime.
 
-Run both benchmarks and save PNG results with one command:
+Run both benchmarks and save PDF findings and PNG results with one command:
 
 ```sh
 thermal
 ```
 
-This benchmarks the CPU for 30 seconds, then the GPU for 30 seconds, without survey prompts. It saves one JSON file and one PNG with separate CPU/GPU scores, thermal timelines, and statuses. The GPU compute backend currently supports Windows with an installed OpenCL GPU driver. Unsupported or refused tests are clearly marked; no score is fabricated.
+This benchmarks the CPU for 30 seconds, then the GPU for 30 seconds, without survey prompts. It saves JSON measurements, a PDF findings report, and a PNG with separate CPU/GPU scores, thermal timelines, and statuses. The GPU compute backend currently supports Windows with an installed OpenCL GPU driver. Unsupported or refused tests are clearly marked; no score is fabricated.
 
 Each target requires its own readable temperature. CPU temperature is unavailable through the native Windows/macOS APIs used here, so the CPU phase is refused unless a provider is configured or the user explicitly chooses `--allow-unmonitored`. The monitored GPU phase can still run. A partial suite returns exit code 1 and saves its results.
 
@@ -22,8 +22,8 @@ Below, `thermal` means the installed executable on PATH. From an extracted relea
 
 | Task | Command |
 | --- | --- |
-| CPU + GPU benchmarks and PNG | `thermal` |
-| JSON stdout, no PNG | `thermal record --survey skip --json --no-png` |
+| CPU + GPU benchmarks, PDF, and PNG | `thermal` |
+| JSON only | `thermal record --survey skip --json --no-pdf --no-png` |
 | Choose duration and output | `thermal record --survey skip --duration 60s --out run.json` |
 | Record an already running game | `thermal record --survey skip --workload my-game --duration 120s` |
 | Inspect sensors without recording | `thermal doctor --json` |
@@ -31,9 +31,9 @@ Below, `thermal` means the installed executable on PATH. From an extracted relea
 | Run only the CPU benchmark | `thermal --target cpu` |
 | Run only the GPU benchmark | `thermal --target gpu` |
 | Compare saved runs | `thermal compare before.json after.json --json --png comparison.png` |
-| Export a saved run | `thermal report run.json --png report.png` |
+| Export a saved run | `thermal report run.json --pdf report.pdf --png report.png` |
 | List default saved runs | `thermal history` |
-| Synthetic example, no load | `thermal demo --png demo.png` |
+| Synthetic example, no load | `thermal demo --pdf demo.pdf --png demo.png` |
 | See all benchmark options | `thermal benchmark --help` |
 
 ## Rules for automation
@@ -45,10 +45,15 @@ Below, `thermal` means the installed executable on PATH. From an extracted relea
   answers through the shortcut, add `--survey auto --json` and the survey inputs.
 - JSON stdout is supported by captures, `doctor`, `survey`, and `compare`.
   Read saved JSON for `report` or `import`. Keep stderr separate from JSON stdout.
-- `record`, `benchmark`, and `import` save JSON and PNG automatically. `--no-png`
-  disables the image; `--png FILE.png` changes its path. Do not combine those flags.
+- `record`, `benchmark`, and `import` save JSON, PDF, and PNG automatically.
+  `--pdf FILE.pdf` and `--png FILE.png` change export paths; `--no-pdf` and
+  `--no-png` disable them independently. Do not combine a path flag with its disable flag.
+  `report`, `compare`, and `demo` export only when `--pdf` or `--png` is supplied.
+  PDFs contain a findings overview, target-specific measurements, charts, and next
+  steps. Missing readings and incomplete tests remain explicit; thresholds are
+  general review cues, not device-specific diagnoses. Fonts are embedded.
 - Files are never overwritten. Use fresh names. `--out` saves independently of
-  stdout; do not redirect stdout to the same file. If PNG export fails after JSON
+  stdout; do not redirect stdout to the same file. If a PDF or PNG export fails after JSON
   is saved, regenerate with `report` instead of repeating the measurement.
 - Default storage: `%APPDATA%/thermal/runs` on Windows,
   `~/Library/Application Support/thermal/runs` on macOS, and

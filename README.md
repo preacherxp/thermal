@@ -4,6 +4,10 @@ CPU/GPU benchmarks, temperature recordings, and before/after comparisons—with 
 
 One standalone binary. No runtime to install. Your data stays local.
 
+[![Thermal running a monitored CPU benchmark, showing live temperatures and saved reports](examples/demo.gif)](examples/demo.mp4)
+
+[Watch the video](examples/demo.mp4) · An eight-second CPU benchmark on Apple Silicon with two workers.
+
 ## Install
 
 ### 1. Install with curl
@@ -99,3 +103,5 @@ go run ./scripts/dist build --local
 Omit `--local` to build all six targets. `go run ./scripts/dist package` creates archives, installers, and checksums in a fresh `release/v<version>/` directory. CI publishes releases when a matching version tag is pushed.
 
 See [AGENTS.md](AGENTS.md#development) for native and installer checks.
+
+To regenerate the recording, install [VHS](https://github.com/charmbracelet/vhs), `ffmpeg`, and `ttyd`, put `thermal` on PATH, then run `vhs examples/demo.tape` from the repository root. The tape runs a real monitored CPU benchmark with the default 90 °C stop limit, saves reports in a fresh temporary directory, and writes the GIF and MP4 to `examples/`.

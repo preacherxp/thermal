@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const Version = "0.6.0"
+const Version = "0.7.0"
 
 var Stages = []string{"baseline", "apps-closed", "profile-changed", "fans-cleaned", "repasted", "specialist"}
 

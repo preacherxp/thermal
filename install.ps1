@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'Use install.sh on Linux or macOS.' }
-if ($Version -notmatch '^v[0-9][A-Za-z0-9._-]*$') { throw 'Use the installer attached to a release, or set THERMAL_VERSION to a tag such as v0.6.0.' }
+if ($Version -notmatch '^v[0-9][A-Za-z0-9._-]*$') { throw 'Use the installer attached to a release, or set THERMAL_VERSION to a tag such as v0.7.0.' }
 if ($Repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { throw 'Repository must be owner/repo.' }
 $nativeArch = $env:PROCESSOR_ARCHITEW6432
 if (-not $nativeArch) { $nativeArch = $env:PROCESSOR_ARCHITECTURE }

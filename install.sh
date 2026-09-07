@@ -9,7 +9,7 @@ main() {
     install_dir=${THERMAL_INSTALL_DIR:-"$HOME/.local/bin"}
     case "$version" in
         v[0-9]*) ;;
-        *) fail 'Use a release installer, or set THERMAL_VERSION to a release tag such as v0.6.0.' ;;
+        *) fail 'Use a release installer, or set THERMAL_VERSION to a release tag such as v0.7.0.' ;;
     esac
     case "$version" in *[!A-Za-z0-9._-]*) fail 'Invalid release tag.' ;; esac
     case "$repo" in ''|*[!A-Za-z0-9._/-]*) fail 'Invalid repository.' ;; esac

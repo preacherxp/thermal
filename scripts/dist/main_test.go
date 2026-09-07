@@ -39,7 +39,7 @@ func TestPackageRelease(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(root) })
 	t.Setenv("GITHUB_REPOSITORY", "test-owner/thermal-fork")
-	t.Setenv("GITHUB_REF", "refs/tags/v0.6.0")
+	t.Setenv("GITHUB_REF", "refs/tags/v0.7.0")
 	for _, name := range []string{"THIRD_PARTY_LICENSES.txt", "LICENSE", "README.md", "RUN.md", "AGENTS.md", "internal/thermal/assets/LICENSE", "install.sh", "install.ps1", "examples/comparison.png"} {
 		if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
 			t.Fatal(err)
@@ -67,7 +67,7 @@ func TestPackageRelease(t *testing.T) {
 	if err := packageRelease(); err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join("release", "v0.6.0")
+	dir := filepath.Join("release", "v0.7.0")
 	checksums, err := os.ReadFile(filepath.Join(dir, "checksums.txt"))
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +146,7 @@ func TestPackageRelease(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(data) != strings.ReplaceAll(strings.ReplaceAll(templates[name], "preacherxp/thermal", "test-owner/thermal-fork"), "@VERSION@", "v0.6.0") {
+		if string(data) != strings.ReplaceAll(strings.ReplaceAll(templates[name], "preacherxp/thermal", "test-owner/thermal-fork"), "@VERSION@", "v0.7.0") {
 			t.Fatalf("installer not pinned: %s", data)
 		}
 	}

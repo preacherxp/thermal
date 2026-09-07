@@ -72,25 +72,28 @@ func run(args []string) error {
 		if len(args) != 1 {
 			return fmt.Errorf("check-deps takes no arguments")
 		}
-		modules, err := goCommand(target{runtime.GOOS, runtime.GOARCH}, "list", "-m", "all")
+		licenses, err := os.ReadFile("THIRD_PARTY_LICENSES.txt")
 		if err != nil {
 			return err
 		}
-		if strings.TrimSpace(string(modules)) != "thermal-cli" {
-			return fmt.Errorf("external Go modules are forbidden: %s", modules)
+		modules, err := goCommand(target{runtime.GOOS, runtime.GOARCH}, "list", "-m", "-mod=readonly", "-f", "{{if not .Main}}{{.Path}} {{.Version}}{{end}}", "all")
+		if err != nil {
+			return err
+		}
+		for _, module := range strings.Split(strings.TrimSpace(string(modules)), "\n") {
+			if !strings.Contains(string(licenses), strings.TrimSpace(module)) {
+				return fmt.Errorf("missing license notice for %s", module)
+			}
 		}
 		for _, t := range targets {
-			deps, err := goCommand(t, "list", "-deps", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}", "./...")
-			if err != nil {
+			if _, err := goCommand(t, "list", "-deps", "-mod=readonly", "./..."); err != nil {
 				return err
 			}
-			for _, dep := range strings.Fields(string(deps)) {
-				if !strings.HasPrefix(dep, "thermal-cli/") {
-					return fmt.Errorf("non-standard dependency on %s: %s", t.name(), dep)
-				}
-			}
 		}
-		fmt.Println("Verified: standard-library-only Go, cgo disabled, all six targets.")
+		if _, err := goCommand(target{runtime.GOOS, runtime.GOARCH}, "mod", "verify"); err != nil {
+			return err
+		}
+		fmt.Println("Verified: pinned module checksums and license notices, cgo disabled, all six targets.")
 		return nil
 	case "package":
 		if len(args) != 1 {
@@ -104,7 +107,7 @@ func run(args []string) error {
 
 func goCommand(t target, args ...string) ([]byte, error) {
 	cmd := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), args...)
-	cmd.Env = append(os.Environ(), "GOOS="+t.os, "GOARCH="+t.arch, "CGO_ENABLED=0", "GOPROXY=off", "GOSUMDB=off", "GOTOOLCHAIN=local")
+	cmd.Env = append(os.Environ(), "GOOS="+t.os, "GOARCH="+t.arch, "CGO_ENABLED=0", "GOTOOLCHAIN=local")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("go %s: %w\n%s", strings.Join(args, " "), err, output)
@@ -188,6 +191,11 @@ func packageRelease() error {
 	notices := append([]byte("Third-party notices for the bundled Go binaries.\n\nGo runtime and standard library\n"), goLicense...)
 	notices = append(notices, []byte("\nGo font (embedded PNG report atlas)\n")...)
 	notices = append(notices, fontLicense...)
+	dependencyLicenses, err := os.ReadFile("THIRD_PARTY_LICENSES.txt")
+	if err != nil {
+		return err
+	}
+	notices = append(notices, dependencyLicenses...)
 	common := []entry{{"THIRD_PARTY_NOTICES.txt", notices, 0644}}
 	for _, name := range []string{"LICENSE", "README.md", "RUN.md", "AGENTS.md"} {
 		data, err := os.ReadFile(name)

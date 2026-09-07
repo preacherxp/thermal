@@ -10,7 +10,7 @@ This benchmarks the CPU for 30 seconds, then the GPU for 30 seconds, and saves J
 
 The GPU benchmark uses the installed OpenCL GPU driver on Windows. Other platforms report the GPU test as unavailable. Each test requires a readable target temperature; missing monitoring is shown as a refused test. Native Windows/macOS CPU sensors are unavailable by default. Use an optional temperature provider, or explicitly choose `thermal --allow-unmonitored` for bounded tests without temperature readings. Any available temperature limits still apply.
 
-For full console tables: `thermal --verbose`. To inspect all details later: `thermal report run.json`. Older Windows consoles automatically use plain text.
+Interactive runs open the live dashboard by default. Use `thermal --no-tui` for minimal output or `thermal --verbose` for full console tables. To inspect all details later: `thermal report run.json`. Unsupported terminals and redirected output automatically use the minimal fallback. In the dashboard, `q`, Esc, or Ctrl+C stops safely and saves partial results.
 
 To change the duration per test: `thermal --duration 60s`.
 For passive monitoring: `thermal record --survey skip --duration 30s`.
@@ -106,6 +106,6 @@ With Go 1.23 or newer installed:
 go run ./cmd/thermal demo --pdf demo.pdf --png demo.png
 ```
 
-`go run ./scripts/dist build --local` updates your platform's executable in `dist/<os>-<arch>`. `go run ./scripts/dist build` builds all six targets. Normal builds need no external packages or font tools.
+`go run ./scripts/dist build --local` updates your platform's executable in `dist/<os>-<arch>`. `go run ./scripts/dist build` builds all six targets. The first build downloads the pinned Go TUI modules; no font tools or cgo are needed. Distributed executables remain standalone.
 
 See [README.md](README.md) for sensor setup and all options.

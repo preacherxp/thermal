@@ -117,7 +117,8 @@ Other tasks:
   thermal benchmark --survey skip --duration 30s
   thermal compare before.json after.json --png comparison.png
 
-Benchmarks print a concise summary; --verbose shows full sensor tables.
+Interactive captures open a live dashboard. --no-tui uses minimal console output.
+Redirected output and --json use the minimal path; --verbose shows full tables.
 Run thermal record --help or thermal benchmark --help for options.
 Captures and imports save PDF and PNG beside the JSON; --no-pdf / --no-png disable them.
 GPU compute uses an OpenCL GPU driver on Windows; other platforms report unavailable.
@@ -169,6 +170,7 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	unmonitored := f.Bool("allow-unmonitored", false, "Explicitly allow benchmark load without a readable target temperature")
 	output := f.String("out", "", "Run JSON path; defaults to user config thermal/runs")
 	asJSON := f.Bool("json", false, "Print JSON instead of a human report")
+	noTUI := f.Bool("no-tui", false, "Use minimal console output instead of the live dashboard")
 	verbose := f.Bool("verbose", false, "Show full sensor tables and recommendations after capture")
 	target := "both"
 	if mode == "benchmark" {
@@ -224,6 +226,11 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	o.Preparation = prepared
 	if prepared != nil {
 		o.Profile = prepared.Profile
+	}
+	if !*noTUI && !*asJSON && !*verbose {
+		if handled, err := captureDashboard(ctx, mode, target, o, *output, pdfOptions, pngOptions, out, errOut); handled {
+			return err
+		}
 	}
 	fmt.Fprintf(errOut, "Preparing %s (%s). Ctrl+C stops and saves partial results.\n", mode, duration.String())
 	if mode == "benchmark" {

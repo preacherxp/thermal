@@ -64,7 +64,9 @@ Benchmarks CPU, then GPU, for **30 seconds each**. No survey prompts. Saves JSON
 | Try a synthetic report without load | `thermal demo --pdf demo.pdf --png demo.png` |
 | See all options | `thermal --help` |
 
-Console output shows a compact benchmark summary. Use `--verbose` or `thermal report run.json` for full tables. Color is used only when the terminal supports it; `NO_COLOR=1` disables it.
+Interactive terminals open a modern live dashboard built with Bubble Tea, Lip Gloss, and Bubbles: CPU/GPU cards, temperature traces, progress, and saved report paths. It adapts to the window size and returns to the prompt when reports are saved. Press `q`, Esc, or Ctrl+C to stop safely and save partial results.
+
+Use `--no-tui` for minimal output, or `--verbose` / `thermal report run.json` for full tables. Pipes, `--json`, unsupported terminals, `NO_COLOR`, and `TERM=dumb` automatically use the minimal fallback.
 
 [See a sample PNG](examples/comparison.png) · [More examples](RUN.md) · [Automation guide](AGENTS.md)
 
@@ -80,9 +82,10 @@ Use `--out run.json` to choose an output path, `--json` for JSON stdout, `--pdf 
 
 ## Development
 
-Go 1.23+, standard library only, no cgo. From the repository root:
+Go 1.23+, with pinned Go TUI dependencies and no cgo. From the repository root:
 
 ```sh
+go mod download
 go test ./...
 go vet ./...
 go run ./scripts/dist check-deps

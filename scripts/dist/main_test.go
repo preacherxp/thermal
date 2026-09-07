@@ -25,7 +25,7 @@ func TestPackageRelease(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(root) })
 	t.Setenv("GITHUB_REPOSITORY", "test-owner/thermal-fork")
 	t.Setenv("GITHUB_REF", "refs/tags/v0.5.0")
-	for _, name := range []string{"LICENSE", "README.md", "RUN.md", "AGENTS.md", "internal/thermal/assets/LICENSE", "install.sh", "install.ps1", "examples/comparison.png"} {
+	for _, name := range []string{"THIRD_PARTY_LICENSES.txt", "LICENSE", "README.md", "RUN.md", "AGENTS.md", "internal/thermal/assets/LICENSE", "install.sh", "install.ps1", "examples/comparison.png"} {
 		if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
 			t.Fatal(err)
 		}

@@ -16,7 +16,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
+      - run: go mod download
       - run: go run ./scripts/dist check-deps
       - run: go test ./...
       - run: go vet ./...
@@ -38,7 +39,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
       - run: go run ./scripts/dist build
       - run: go run ./scripts/dist package
       - uses: actions/upload-artifact@v4

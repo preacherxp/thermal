@@ -43,11 +43,14 @@ Below, `thermal` means the installed executable on PATH. From an extracted relea
   Explicit `record` and `benchmark` retain their interactive
   survey default; use `--json` or `--survey skip` to avoid prompts. To supply survey
   answers through the shortcut, add `--survey auto --json` and the survey inputs.
-- Benchmarks print a compact console summary; `--verbose` restores full tables,
-  context, and recommendations. `thermal report run.json` also shows full details.
+- Interactive captures use the Bubble Tea/Lip Gloss dashboard by default.
+  `--no-tui` selects minimal output; `--verbose` restores full tables and recommendations.
+  Pipes, `--json`, unsupported terminals, `NO_COLOR`, and `TERM=dumb` use the fallback.
+  The dashboard enables Windows virtual terminal processing when supported and
+  restores terminal state on exit. It never starts an extra workload after a UI failure.
+  `q`, Esc, and Ctrl+C cancel the workload and wait for partial reports to be saved.
   Large scores use SI prefixes (k = thousand, M = million, G = billion, T = trillion).
-  Windows color requires virtual terminal processing; otherwise output is plain.
-  `NO_COLOR` or `TERM=dumb` disables ANSI styling.
+  `thermal report run.json` shows full saved details without starting load.
 - JSON stdout is supported by captures, `doctor`, `survey`, and `compare`.
   Read saved JSON for `report` or `import`. Keep stderr separate from JSON stdout.
 - `record`, `benchmark`, and `import` save JSON, PDF, and PNG automatically.
@@ -96,7 +99,9 @@ See [RUN.md](RUN.md) for quick examples and [README.md](README.md) for full opti
 
 ## Development
 
-Go 1.23+; standard library only, no cgo. Commands: `cmd/thermal`; implementation: `internal/thermal`; distribution tooling: `scripts/dist`. Preserve unknown readings, non-overwriting saves, and clean JSON stdout.
+Go 1.23+; pinned external Go TUI libraries are permitted, no cgo. Commands: `cmd/thermal`; measurement/report implementation: `internal/thermal`; dashboard: `internal/tui`; distribution tooling: `scripts/dist`. Preserve unknown readings, non-overwriting saves, and clean JSON stdout.
+
+Download modules with `go mod download`. Dependency versions are pinned in `go.mod`/`go.sum`; update `THIRD_PARTY_LICENSES.txt` from upstream module licenses when dependencies change. Release archives bundle these notices; `check-deps` verifies checksums, license coverage, and all six platforms.
 
 After code changes, run `go test ./...`, `go vet ./...`, and `go run ./scripts/dist check-deps`. Rebuild with `go run ./scripts/dist build --local`, then set `THERMAL_TEST_NATIVE=1` and run `go test ./scripts/smoke -count=1` for CLI/distribution changes. Run `sh scripts/install.test.sh` on Linux/macOS and `./scripts/install.test.ps1` on Windows for installer changes.
 

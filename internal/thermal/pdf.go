@@ -67,7 +67,7 @@ func pdfNumber(n *float64, unit string, compact bool) string {
 	}
 	return fmt.Sprintf("%.1f%s", v, unit)
 }
-func pdfPrimary(r Run) (string, Stats) {
+func primaryTargetStats(r Run) (string, Stats) {
 	stats := Summarize(r, true)
 	kind := ""
 	if r.Workload == "cpu-sha256-v1" {
@@ -97,7 +97,7 @@ func pdfFindings(r Run) []pdfFinding {
 	var findings []pdfFinding
 	for _, phase := range pdfRuns(r) {
 		name := pdfPhaseName(phase)
-		id, s := pdfPrimary(phase)
+		id, s := primaryTargetStats(phase)
 		if phase.Status != "complete" {
 			body := "Status: " + phase.Status + ". "
 			switch phase.Status {
@@ -383,7 +383,7 @@ func (p *pdfReport) details(r Run) {
 	score, unit := pdfScore(r)
 	p.row("Throughput", score+" "+unit)
 	p.row("Captured / requested", fmt.Sprintf("%.1f s / %.1f s", r.Elapsed, r.Duration))
-	id, s := pdfPrimary(r)
+	id, s := primaryTargetStats(r)
 	measured := r.Operations > 0 || r.GPU != nil && r.GPU.Rate() != nil || r.Workload != "cpu-sha256-v1" && r.Workload != "gpu-integer-v1"
 	if measured {
 		peak := Summarize(r, false)[id].Peak

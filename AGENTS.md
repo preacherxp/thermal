@@ -43,6 +43,11 @@ Below, `thermal` means the installed executable on PATH. From an extracted relea
   Explicit `record` and `benchmark` retain their interactive
   survey default; use `--json` or `--survey skip` to avoid prompts. To supply survey
   answers through the shortcut, add `--survey auto --json` and the survey inputs.
+- Benchmarks print a compact console summary; `--verbose` restores full tables,
+  context, and recommendations. `thermal report run.json` also shows full details.
+  Large scores use SI prefixes (k = thousand, M = million, G = billion, T = trillion).
+  Windows color requires virtual terminal processing; otherwise output is plain.
+  `NO_COLOR` or `TERM=dumb` disables ANSI styling.
 - JSON stdout is supported by captures, `doctor`, `survey`, and `compare`.
   Read saved JSON for `report` or `import`. Keep stderr separate from JSON stdout.
 - `record`, `benchmark`, and `import` save JSON, PDF, and PNG automatically.

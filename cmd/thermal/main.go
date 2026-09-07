@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -116,6 +117,7 @@ Other tasks:
   thermal benchmark --survey skip --duration 30s
   thermal compare before.json after.json --png comparison.png
 
+Benchmarks print a concise summary; --verbose shows full sensor tables.
 Run thermal record --help or thermal benchmark --help for options.
 Captures and imports save PDF and PNG beside the JSON; --no-pdf / --no-png disable them.
 GPU compute uses an OpenCL GPU driver on Windows; other platforms report unavailable.
@@ -167,6 +169,7 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	unmonitored := f.Bool("allow-unmonitored", false, "Explicitly allow benchmark load without a readable target temperature")
 	output := f.String("out", "", "Run JSON path; defaults to user config thermal/runs")
 	asJSON := f.Bool("json", false, "Print JSON instead of a human report")
+	verbose := f.Bool("verbose", false, "Show full sensor tables and recommendations after capture")
 	target := "both"
 	if mode == "benchmark" {
 		f.StringVar(&target, "target", "both", "Benchmark target: cpu, gpu, or both (sequential)")
@@ -250,14 +253,18 @@ func capture(ctx context.Context, mode string, args []string, out, errOut io.Wri
 	if err != nil {
 		return fmt.Errorf("save run: %w", err)
 	}
-	fmt.Fprintln(errOut, "Saved "+path)
-	pdfErr := pdfOptions.save(path, r, errOut)
-	pngErr := pngOptions.save(path, r, errOut)
+	var saved bytes.Buffer
+	fmt.Fprintln(&saved, "Saved "+path)
+	pdfErr := pdfOptions.save(path, r, &saved)
+	pngErr := pngOptions.save(path, r, &saved)
 	if *asJSON {
 		err = writeJSON(out, r)
+	} else if mode == "benchmark" && !*verbose {
+		thermal.BenchmarkSummary(out, r)
 	} else {
 		thermal.Report(out, r)
 	}
+	fmt.Fprint(errOut, saved.String())
 	if err != nil {
 		return err
 	}

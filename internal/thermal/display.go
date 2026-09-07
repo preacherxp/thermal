@@ -18,7 +18,7 @@ type display struct {
 func newDisplay(w io.Writer) display {
 	color := false
 	if f, ok := w.(*os.File); ok {
-		color = TerminalFile(f)
+		color = terminalColor(f)
 	}
 	if _, ok := os.LookupEnv("NO_COLOR"); ok {
 		color = false
@@ -50,12 +50,10 @@ func (d display) paint(code, s string) string {
 	return "\x1b[" + code + "m" + s + "\x1b[0m"
 }
 func (d display) header(title, subtitle string) {
-	fmt.Fprintln(d.w, d.paint("36", "╭─ THERMAL  "+strings.Repeat("─", 61)))
-	fmt.Fprintln(d.w, "│  "+d.paint("1", clean(title)))
+	fmt.Fprintln(d.w, d.paint("1;36", "THERMAL / "+clean(title)))
 	if subtitle != "" {
-		fmt.Fprintln(d.w, "│  "+clean(subtitle))
+		fmt.Fprintln(d.w, "  "+clean(subtitle))
 	}
-	fmt.Fprintln(d.w, d.paint("36", "╰"+strings.Repeat("─", 73)))
 }
 func (d display) section(title string) { fmt.Fprintln(d.w, "\n  "+d.paint("1;36", clean(title))) }
 func (d display) line(s string)        { fmt.Fprintln(d.w, "  "+clean(s)) }
@@ -174,7 +172,7 @@ func Report(w io.Writer, r Run) {
 	if r.GPU != nil {
 		d.section("GPU COMPUTE BENCHMARK")
 		d.line(r.GPU.Device + " · " + r.GPU.Backend)
-		d.line(value(r.GPU.Rate(), " verified iterations/s") + fmt.Sprintf(" · %.1fs", r.GPU.Elapsed))
+		d.line(gpuRateText(r.GPU) + fmt.Sprintf(" · %.1fs", r.GPU.Elapsed))
 		d.line("Integer compute workload; this is not a graphics FPS or third-party benchmark score.")
 	}
 	if len(r.Apps) > 0 {
@@ -305,7 +303,17 @@ func PrintComparison(w io.Writer, a, b Run, c Comparison) {
 }
 func NewProgress(w io.Writer, duration float64) (func(Sample), func()) {
 	d := newDisplay(w)
+	lastPrinted := math.Inf(-1)
 	update := func(s Sample) {
+		if !d.color {
+			if s.Seconds < lastPrinted {
+				lastPrinted = math.Inf(-1)
+			}
+			if s.Seconds-lastPrinted < 5 && s.Seconds < duration {
+				return
+			}
+			lastPrinted = s.Seconds
+		}
 		fraction := math.Min(1, math.Max(0, s.Seconds/duration))
 		filled := int(fraction * 12)
 		line := fmt.Sprintf("%5.1fs [%s%s] %3.0f%%", s.Seconds, strings.Repeat("=", filled), strings.Repeat(" ", 12-filled), fraction*100)

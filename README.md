@@ -56,12 +56,15 @@ Benchmarks CPU, then GPU, for **30 seconds each**. No survey prompts. Saves JSON
 | Want to… | Command |
 | --- | --- |
 | Check available sensors | `thermal doctor` |
+| Show full console tables | `thermal --verbose` |
 | Test just the CPU | `thermal --target cpu` |
 | Change each test's duration | `thermal --duration 60s` |
 | Monitor a running game without adding load | `thermal record --survey skip --workload my-game --duration 120s` |
 | Compare saved runs | `thermal compare before.json after.json --pdf comparison.pdf --png comparison.png` |
 | Try a synthetic report without load | `thermal demo --pdf demo.pdf --png demo.png` |
 | See all options | `thermal --help` |
+
+Console output shows a compact benchmark summary. Use `--verbose` or `thermal report run.json` for full tables. Color is used only when the terminal supports it; `NO_COLOR=1` disables it.
 
 [See a sample PNG](examples/comparison.png) · [More examples](RUN.md) · [Automation guide](AGENTS.md)
 

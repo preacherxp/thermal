@@ -77,6 +77,9 @@ func TestNativeDefaultBenchmark(t *testing.T) {
 	if !strings.Contains(string(output), pdf) {
 		t.Fatal("PDF path not printed")
 	}
+	if strings.Contains(string(output), "POWER LIMITS") || !strings.Contains(string(output), "BENCHMARK /") {
+		t.Fatalf("default benchmark did not use compact output: %s", output)
+	}
 	png := strings.TrimSuffix(files[0], ".json") + ".png"
 	assertPNG(t, png)
 	if !strings.Contains(string(output), files[0]) || !strings.Contains(string(output), png) {

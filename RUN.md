@@ -10,6 +10,8 @@ This benchmarks the CPU for 30 seconds, then the GPU for 30 seconds, and saves J
 
 The GPU benchmark uses the installed OpenCL GPU driver on Windows. Other platforms report the GPU test as unavailable. Each test requires a readable target temperature; missing monitoring is shown as a refused test. Native Windows/macOS CPU sensors are unavailable by default. Use an optional temperature provider, or explicitly choose `thermal --allow-unmonitored` for bounded tests without temperature readings. Any available temperature limits still apply.
 
+For full console tables: `thermal --verbose`. To inspect all details later: `thermal report run.json`. Older Windows consoles automatically use plain text.
+
 To change the duration per test: `thermal --duration 60s`.
 For passive monitoring: `thermal record --survey skip --duration 30s`.
 

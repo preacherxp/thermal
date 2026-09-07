@@ -34,7 +34,7 @@ Both installers select your architecture and verify SHA-256 checksums. No admini
 If Windows installation fails with `Get-FileHash is not recognized`, the downloaded installer requires a cmdlet unavailable in your PowerShell host. The corrected [repository installer](install.ps1) uses .NET SHA-256 hashing directly. From the repository root, run it with the release tag you want to install, for example:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version v0.5.0
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version v0.6.0
 ```
 
 Release downloads only receive this fix when an updated installer is published. You can also download and extract the Windows archive as described below.

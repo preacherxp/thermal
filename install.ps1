@@ -2,12 +2,12 @@
 [CmdletBinding()]
 param(
     [string]$Repository = $(if ($env:THERMAL_REPOSITORY) { $env:THERMAL_REPOSITORY } else { 'preacherxp/thermal' }),
-    [string]$Version = $(if ($env:THERMAL_VERSION) { $env:THERMAL_VERSION } else { 'v0.5.0' }),
+    [string]$Version = $(if ($env:THERMAL_VERSION) { $env:THERMAL_VERSION } else { 'v0.6.0' }),
     [string]$InstallDir = $(if ($env:THERMAL_INSTALL_DIR) { $env:THERMAL_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Thermal\bin' })
 )
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'Use install.sh on Linux or macOS.' }
-if ($Version -notmatch '^v[0-9][A-Za-z0-9._-]*$') { throw 'Use the installer attached to a release, or set THERMAL_VERSION to a tag such as v0.5.0.' }
+if ($Version -notmatch '^v[0-9][A-Za-z0-9._-]*$') { throw 'Use the installer attached to a release, or set THERMAL_VERSION to a tag such as v0.6.0.' }
 if ($Repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { throw 'Repository must be owner/repo.' }
 $nativeArch = $env:PROCESSOR_ARCHITEW6432
 if (-not $nativeArch) { $nativeArch = $env:PROCESSOR_ARCHITECTURE }

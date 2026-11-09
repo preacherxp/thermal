@@ -90,7 +90,7 @@ The built-in GPU test measures integer compute throughput, not gaming FPS. Use `
 
 ## macOS / Linux / Windows ARM
 
-Download the matching architecture from the [release asset table](README.md#2-download-a-prebuilt-github-release). Windows ARM64 uses the same `.\thermal.exe` commands above. On macOS/Linux, run from the extracted folder:
+Download the matching architecture from the [GitHub Releases](https://github.com/preacherxp/thermal/releases/latest). Windows ARM64 uses the same `.\thermal.exe` commands above. On macOS/Linux, run from the extracted folder:
 
 ```sh
 ./thermal demo --pdf demo.pdf --png demo.png
